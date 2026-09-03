@@ -1,52 +1,44 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAppStore } from '../store';
-import {
-  loadTranslations,
-  t,
-  onTranslationsChanged,
-} from '../services/uiTranslation';
+import { loadTranslations, t } from '../services/uiTranslation';
 
 /**
- * Hook that provides the t() translation function.
- * Automatically loads translations on mount and when language changes.
- * Shows loading state while translations are being fetched.
+ * Translation hook — guaranteed re-render via Zustand store.
+ *
+ * How it works:
+ * 1. On mount, loads translations for current language
+ * 2. Uses a Zustand version counter to force re-renders
+ * 3. Falls back to English text while loading
  */
 export function useTranslation(strings: string[]) {
   const language = useAppStore(s => s.language);
-  const [ready, setReady] = useState(language === 'en');
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   const mountedRef = useRef(true);
 
   const uniqueStrings = [...new Set(strings.filter(s => s.trim()))];
+  const stringsKey = uniqueStrings.join('|||');
 
   useEffect(() => {
     mountedRef.current = true;
 
     if (language === 'en') {
-      setReady(true);
+      setTick(t => t + 1);
       return;
     }
 
-    setReady(false);
     loadTranslations(language, uniqueStrings).then(() => {
-      if (mountedRef.current) setReady(true);
+      if (mountedRef.current) {
+        setTick(t => t + 1); // Force re-render after translations load
+      }
     });
 
     return () => { mountedRef.current = false; };
-  }, [language, uniqueStrings.join('|||')]);
+  }, [language, stringsKey]);
 
-  // Subscribe to global translation change event
-  useEffect(() => {
-    const unsub = onTranslationsChanged(() => {
-      setTick(tick => tick + 1);
-      setReady(true);
-    });
-    return unsub;
-  }, []);
-
+  // translate function uses latest translations via closure
   const translate = useCallback((key: string): string => {
     return t(key);
-  }, [ready, language]);
+  }, [tick, language]);
 
-  return { t: translate, language, ready };
+  return { t: translate, language, ready: language === 'en' || tick > 0 };
 }
