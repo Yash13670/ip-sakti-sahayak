@@ -17,55 +17,90 @@ export function VoiceInput({ onResult, className = '' }: VoiceInputProps) {
 
   const startRecording = useCallback(async () => {
     try {
+      console.log('[VoiceInput] Requesting microphone...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      console.log('[VoiceInput] Mic granted, starting recording...');
+
+      // Check supported mime types
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/mp4';
+
+      console.log('[VoiceInput] Using MIME type:', mimeType);
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (e) => {
+        console.log('[VoiceInput] Data available:', e.data.size, 'bytes');
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
+      mediaRecorder.onerror = (e) => {
+        console.error('[VoiceInput] MediaRecorder error:', e);
+        setRecording(false);
+        stream.getTracks().forEach(t => t.stop());
+      };
+
       mediaRecorder.onstop = async () => {
+        console.log('[VoiceInput] Recording stopped. Chunks:', chunksRef.current.length);
         stream.getTracks().forEach(t => t.stop());
         setProcessing(true);
 
         try {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          const blob = new Blob(chunksRef.current, { type: mimeType });
+          console.log('[VoiceInput] Audio blob size:', blob.size, 'bytes');
+
+          if (blob.size < 100) {
+            console.warn('[VoiceInput] Audio too small, likely empty recording');
+            setProcessing(false);
+            return;
+          }
+
           const reader = new FileReader();
           reader.onloadend = async () => {
             const base64 = (reader.result as string).split(',')[1];
             if (!base64) {
+              console.error('[VoiceInput] Failed to convert to base64');
               setProcessing(false);
               return;
             }
 
+            console.log('[VoiceInput] Sending to STT, base64 length:', base64.length);
+
             try {
-              const result = await speechToText(base64, language as LanguageCode);
+              const audioFormat = mimeType.includes('webm') ? 'webm' : mimeType.includes('mp4') ? 'mp4' : 'wav';
+              const result = await speechToText(base64, language as LanguageCode, audioFormat);
+              console.log('[VoiceInput] STT result:', result);
               if (result.text) {
                 onResult(result.text);
               }
             } catch (err) {
-              console.error('[STT] Error:', err);
+              console.error('[VoiceInput] STT Error:', err);
             } finally {
               setProcessing(false);
             }
           };
           reader.readAsDataURL(blob);
-        } catch {
+        } catch (err) {
+          console.error('[VoiceInput] Error processing audio:', err);
           setProcessing(false);
         }
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000); // Request data every 1 second
       setRecording(true);
+      console.log('[VoiceInput] Recording started');
     } catch (err) {
-      console.error('[Mic] Permission denied:', err);
+      console.error('[VoiceInput] Mic permission denied or error:', err);
     }
   }, [language, onResult]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      console.log('[VoiceInput] Stopping recording...');
       mediaRecorderRef.current.stop();
     }
     setRecording(false);

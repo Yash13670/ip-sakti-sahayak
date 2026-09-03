@@ -258,34 +258,29 @@ async function sarvamTranslate(text, sourceLanguage, targetLanguage) {
   };
 }
 
-async function sarvamSTT(audioBase64, language) {
+async function sarvamSTT(audioBase64, language, audioFormat) {
   // Sarvam STT expects multipart/form-data with a file upload.
-  // We decode the base64 audio and create a FormData request.
   const langCode = toSarvamLang(language);
   const audioBuffer = Buffer.from(audioBase64, 'base64');
+  console.log(`[Sarvam STT] Audio: ${audioBuffer.length} bytes, format: ${audioFormat || 'unknown'}, lang: ${langCode}`);
   const boundary = '----SarvamBoundary' + Date.now();
 
-  // Build multipart body manually
-  let body = '';
-  // file field
-  body += `--${boundary}\r\n`;
-  body += `Content-Disposition: form-data; name="file"; filename="audio.wav"\r\n`;
-  body += `Content-Type: audio/wav\r\n\r\n`;
-  const preamble = Buffer.from(body, 'utf-8');
-  const epilogue = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8');
+  const contentType = audioFormat === 'webm' ? 'audio/webm' : audioFormat === 'mp3' ? 'audio/mpeg' : 'audio/wav';
+  const ext = audioFormat === 'webm' ? 'webm' : audioFormat === 'mp3' ? 'mp3' : 'wav';
 
-  // model field
-  const modelPart = Buffer.from(
-    `--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nsaaras:v3\r\n`,
+  // Build multipart body properly with \r\n between parts
+  const parts = [];
+  parts.push(Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio.${ext}"\r\nContent-Type: ${contentType}\r\n\r\n`,
     'utf-8'
-  );
-  // language_code field
-  const langPart = Buffer.from(
-    `--${boundary}\r\nContent-Disposition: form-data; name="language_code"\r\n\r\n${langCode}\r\n`,
-    'utf-8'
-  );
+  ));
+  parts.push(audioBuffer);
+  parts.push(Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nsaaras:v3`, 'utf-8'));
+  parts.push(Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="language_code"\r\n\r\n${langCode}`, 'utf-8'));
+  parts.push(Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8'));
 
-  const multipartBody = Buffer.concat([preamble, audioBuffer, modelPart, langPart, epilogue]);
+  const multipartBody = Buffer.concat(parts);
+  console.log(`[Sarvam STT] Sending ${multipartBody.length} bytes to Sarvam API`);
 
   const res = await fetch(`${SARVAM_BASE}/speech-to-text`, {
     method: 'POST',
@@ -578,11 +573,11 @@ const server = http.createServer(async (req, res) => {
     }
     try {
       const body = await readBody(req);
-      const { audioBase64, language } = body;
+      const { audioBase64, language, audioFormat } = body;
       if (!audioBase64 || !language) {
         return jsonResponse(res, 400, { error: 'Missing required fields: audioBase64, language' });
       }
-      const result = await sarvamSTT(audioBase64, language);
+      const result = await sarvamSTT(audioBase64, language, audioFormat);
       return jsonResponse(res, 200, result);
     } catch (err) {
       console.error('[Sarvam STT] Error:', err.message);

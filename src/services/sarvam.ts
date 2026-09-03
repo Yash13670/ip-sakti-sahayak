@@ -82,12 +82,13 @@ export async function translate(
 
 export async function speechToText(
   audioBase64: string,
-  language: LanguageCode
+  language: LanguageCode,
+  audioFormat?: string
 ): Promise<{ text: string; language: string }> {
   const res = await fetch(`${PROXY_BASE}/stt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ audioBase64, language }),
+    body: JSON.stringify({ audioBase64, language, audioFormat }),
   });
 
   if (!res.ok) {
