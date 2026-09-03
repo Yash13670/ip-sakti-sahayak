@@ -1,0 +1,68 @@
+{
+  "total_chunks": 0,
+  "documents": [
+    {
+      "document_id": "PA1970",
+      "source_name": "Patents Act, 1970",
+      "source_type": "Statute",
+      "jurisdiction": "India",
+      "chunks": 0
+    },
+    {
+      "document_id": "BDA2002",
+      "source_name": "Biological Diversity Act, 2002",
+      "source_type": "Statute",
+      "jurisdiction": "India",
+      "chunks": 0
+    },
+    {
+      "document_id": "PR2003",
+      "source_name": "Patent Rules, 2003",
+      "source_type": "Statute",
+      "jurisdiction": "India",
+      "chunks": 0
+    },
+    {
+      "document_id": "WIPO2024",
+      "source_name": "WIPO Treaty on GR/TK 2024",
+      "source_type": "Treaty",
+      "jurisdiction": "Global",
+      "chunks": 0
+    },
+    {
+      "document_id": "NAGOYA2014",
+      "source_name": "Nagoya Protocol",
+      "source_type": "Treaty",
+      "jurisdiction": "Global",
+      "chunks": 0
+    },
+    {
+      "document_id": "DCA1940",
+      "source_name": "Drugs and Cosmetics Act, 1940",
+      "source_type": "Statute",
+      "jurisdiction": "India",
+      "chunks": 0
+    },
+    {
+      "document_id": "SCHT",
+      "source_name": "Schedule T",
+      "source_type": "Guideline",
+      "jurisdiction": "India",
+      "chunks": 0
+    },
+    {
+      "document_id": "AYUSH",
+      "source_name": "AYUSH Guidelines",
+      "source_type": "Guideline",
+      "jurisdiction": "India",
+      "chunks": 0
+    },
+    {
+      "document_id": "API9",
+      "source_name": "Ayurvedic Pharmacopoeia of India Vol. 9",
+      "source_type": "Pharmacopoeia",
+      "jurisdiction": "India",
+      "chunks": 0
+    }
+  ]
+}
