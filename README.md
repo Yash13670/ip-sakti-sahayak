@@ -1,4 +1,4 @@
-# IP-SAKTI Sahayak 🇮🇳
+# IP-SAKTI Sahayak
 
 ## AI-Powered Preliminary Intellectual Property & Traditional Knowledge Screening Assistant
 
