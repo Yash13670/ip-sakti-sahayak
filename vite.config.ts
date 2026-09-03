@@ -11,6 +11,10 @@ export default defineConfig({
         target: 'http://127.0.0.1:5210',
         changeOrigin: true,
       },
+      '/docs': {
+        target: 'http://127.0.0.1:5210',
+        changeOrigin: true,
+      },
     },
   },
 })
