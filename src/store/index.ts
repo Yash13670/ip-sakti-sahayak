@@ -61,13 +61,22 @@ export interface AppState {
   setIsProcessing: (loading: boolean) => void;
 }
 
+function getSavedLang(): string {
+  try {
+    return localStorage.getItem('ipsakti_language') || 'en';
+  } catch { return 'en'; }
+}
+
 export const useAppStore = create<AppState>((set) => ({
   jurisdiction: 'India',
   setJurisdiction: (j) => set({ jurisdiction: j }),
   currentScreen: 'dashboard',
   setCurrentScreen: (s) => set({ currentScreen: s }),
-  language: 'en',
-  setLanguage: (l) => set({ language: l }),
+  language: getSavedLang(),
+  setLanguage: (l) => {
+    try { localStorage.setItem('ipsakti_language', l); } catch {}
+    set({ language: l });
+  },
 
   currentInput: {
     productName: '',

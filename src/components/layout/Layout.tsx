@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { checkSarvamStatus, SUPPORTED_LANGUAGES } from '../../services/sarvam';
 import { useTranslation } from '../../hooks/useTranslation';
-import { saveLanguage, getSavedLanguage } from '../../services/uiTranslation';
 
 const NAV_KEYS = ['Dashboard', 'Screening', 'Legal Assistant', 'Evidence & Sources', 'Reports'];
 
@@ -40,19 +39,10 @@ export function Layout({ children }: { children: ReactNode }) {
   const [sarvamReady, setSarvamReady] = useState(false);
   const { t } = useTranslation(LAYOUT_STRINGS);
 
-  // Initialize language from localStorage
+  // Check Sarvam status on mount
   useEffect(() => {
     checkSarvamStatus().then(s => setSarvamReady(s.configured));
-    const saved = getSavedLanguage();
-    if (saved !== language) {
-      setLanguage(saved);
-    }
   }, []);
-
-  // Persist language to localStorage when it changes
-  useEffect(() => {
-    saveLanguage(language);
-  }, [language]);
 
   return (
     <div className="flex h-screen bg-surface">
