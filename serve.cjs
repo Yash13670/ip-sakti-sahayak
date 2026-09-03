@@ -680,6 +680,39 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // ─── PDF Document Serving ─────────────────────────────────────────
+
+  if (url.startsWith('/docs/')) {
+    const docName = decodeURIComponent(url.slice(6)); // remove '/docs/'
+    const docPath = path.join(__dirname, docName);
+    // Prevent path traversal
+    if (!docPath.startsWith(__dirname)) {
+      res.writeHead(403);
+      res.end('Forbidden');
+      return;
+    }
+    const ext = path.extname(docName).toLowerCase();
+    if (ext !== '.pdf' && ext !== '.PDF') {
+      res.writeHead(400);
+      res.end('Only PDF files are served');
+      return;
+    }
+    fs.readFile(docPath, (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        res.end('Document not found');
+        return;
+      }
+      res.writeHead(200, {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="${path.basename(docName)}"`,
+        'Cache-Control': 'public, max-age=86400',
+      });
+      res.end(data);
+    });
+    return;
+  }
+
   // ─── Static File Serving ───────────────────────────────────────────
 
   let filePath = url;
