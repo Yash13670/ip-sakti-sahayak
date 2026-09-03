@@ -9,7 +9,7 @@ import {
   Shield,
   Globe,
 } from 'lucide-react';
-import { checkBhashiniStatus, SUPPORTED_LANGUAGES } from '../../services/bhashini';
+import { checkSarvamStatus, SUPPORTED_LANGUAGES } from '../../services/sarvam';
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -22,10 +22,10 @@ const navItems = [
 export function Layout({ children }: { children: ReactNode }) {
   const { currentScreen, setCurrentScreen, jurisdiction, setJurisdiction, language, setLanguage } =
     useAppStore();
-  const [bhashiniReady, setBhashiniReady] = useState(false);
+  const [sarvamReady, setSarvamReady] = useState(false);
 
   useEffect(() => {
-    checkBhashiniStatus().then(s => setBhashiniReady(s.configured));
+    checkSarvamStatus().then(s => setSarvamReady(s.configured));
   }, []);
 
   return (
@@ -72,7 +72,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="text-[10px] text-white/40">
               Language
             </div>
-            {!bhashiniReady && (
+            {!sarvamReady && (
               <span className="text-[8px] px-1 py-0.5 rounded bg-white/10 text-white/30">
                 EN only
               </span>
@@ -89,9 +89,9 @@ export function Layout({ children }: { children: ReactNode }) {
               </option>
             ))}
           </select>
-          {!bhashiniReady && language !== 'en' && (
+          {!sarvamReady && language !== 'en' && (
             <p className="text-[9px] text-amber-400/70 mt-1">
-              Bhashini not configured — English mode only
+              Sarvam AI not configured — English mode only
             </p>
           )}
         </div>
