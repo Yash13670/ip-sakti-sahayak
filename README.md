@@ -6,7 +6,7 @@ IP-SAKTI Sahayak is an India-focused AI-assisted screening platform designed to 
 
 The platform combines legal document retrieval, semantic search, grounded AI responses, claim–evidence verification, citation validation, screening rules, risk classification, and multilingual access to provide an evidence-backed preliminary screening workflow.
 
-> ⚠️ **Disclaimer:** IP-SAKTI Sahayak provides preliminary informational screening only. It does not constitute legal advice, a patentability opinion, freedom-to-operate opinion, or professional legal consultation.
+> ⚠️ Disclaimer: IP-SAKTI Sahayak provides preliminary informational screening only. It does not constitute legal advice, a patentability opinion, freedom-to-operate opinion, or professional legal consultation.
 
 ---
 
@@ -36,7 +36,6 @@ The platform combines legal document retrieval, semantic search, grounded AI res
 
 IP-SAKTI does not consider a claim verified merely because a source exists.
 
-```text
 Generated Claim
       ↓
 Exact Supporting Evidence
@@ -48,57 +47,54 @@ Verification
 SUPPORTED / PARTIALLY_SUPPORTED / UNSUPPORTED
 
 Verification includes:
+- Support status
+- Confidence
+- Reason
+- Evidence reference
 
-Support status
-Confidence
-Reason
-Evidence reference
-🧾 Citation Validation
-
+### 🧾 Citation Validation
 Validates whether generated citations correctly correspond to:
+- Source document
+- Legal provision
+- Page information
+- Retrieved evidence
 
-Source document
-Legal provision
-Page information
-Retrieved evidence
-⚖️ Screening Rules & Risk Classification
-
+### ⚖️ Screening Rules & Risk Classification
 The system evaluates retrieved evidence against predefined screening rules and identifies cases requiring further review.
 
 Example classifications:
+- Low Risk
+- Review Required
+- High Attention / Expert Escalation
 
-Low Risk
-Review Required
-High Attention / Expert Escalation
-🌐 Multilingual Support
-
+### 🌐 Multilingual Support
 IP-SAKTI is designed to provide multilingual accessibility using Bhashini infrastructure.
 
 Capabilities include:
-
-Neural Machine Translation (NMT)
-Automatic Speech Recognition (ASR)
-Text-to-Speech (TTS)
-Text Language Detection (TLD)
+- Neural Machine Translation (NMT)
+- Automatic Speech Recognition (ASR)
+- Text-to-Speech (TTS)
+- Text Language Detection (TLD)
 
 Bhashini acts as the language and voice layer, while legal retrieval, reasoning, and verification remain within the IP-SAKTI pipeline.
 
-📊 Evidence & Retrieval Trace
-
+### 📊 Evidence & Retrieval Trace
 Users can inspect:
+- Retrieved evidence
+- Source documents
+- Relevance scores
+- Retrieval stages
+- Verification results
+- Citation validation
+- Screening decisions
 
-Retrieved evidence
-Source documents
-Relevance scores
-Retrieval stages
-Verification results
-Citation validation
-Screening decisions
-👨‍⚖️ Expert Escalation
-
+### 👨‍⚖️ Expert Escalation
 Cases requiring professional review can be flagged for expert/legal consultation.
 
-🏗️ System Architecture
+---
+
+## 🏗️ System Architecture
+
                          USER
                            │
                            ▼
@@ -154,7 +150,10 @@ Cases requiring professional review can be flagged for expert/legal consultation
                     │
                     ▼
                   Response
-🧠 AI & Retrieval Pipeline
+
+---
+
+## 🧠 AI & Retrieval Pipeline
 
 IP-SAKTI follows an evidence-first workflow:
 
@@ -183,7 +182,9 @@ IP-SAKTI follows an evidence-first workflow:
 12. Risk Classification
        ↓
 13. Report / Next Step
-Retrieval Strategy
+
+### Retrieval Strategy
+
 Final Retrieval Score =
 0.45 × BM25 Score
 +
@@ -196,25 +197,29 @@ OpenRouter
     └── 1536-dimensional embeddings
 
 This hybrid approach balances:
+- Exact legal terminology
+- Section/provision matching
+- Semantic similarity
+- Domain-specific relevance
 
-Exact legal terminology
-Section/provision matching
-Semantic similarity
-Domain-specific relevance
-📖 Legal Knowledge Base
+---
+
+## 📖 Legal Knowledge Base
 
 The prototype knowledge base contains real legal and regulatory documents, including:
 
-The Patents Act, 1970
-The Patents Rules, 2003
-The Biological Diversity Act, 2002
-Drugs and Cosmetics Act, 1940 and Rules, 1945
-Schedule T
-AYUSH guidelines
-Ayurvedic Pharmacopoeia of India (API)
-WIPO Treaty on Intellectual Property, Genetic Resources and Associated Traditional Knowledge, 2024
-Additional international and regulatory reference material
-Current Corpus
+- The Patents Act, 1970
+- The Patents Rules, 2003
+- The Biological Diversity Act, 2002
+- Drugs and Cosmetics Act, 1940 and Rules, 1945
+- Schedule T
+- AYUSH guidelines
+- Ayurvedic Pharmacopoeia of India (API)
+- WIPO Treaty on Intellectual Property, Genetic Resources and Associated Traditional Knowledge, 2024
+- Additional international and regulatory reference material
+
+### Current Corpus
+
 Documents  : 9
 Chunks     : 1124
 Embeddings : 1124
@@ -223,7 +228,9 @@ Failures   : 0
 
 The system preserves document and page/provision metadata so retrieved evidence can be traced back to its source.
 
-🔐 Security
+---
+
+## 🔐 Security
 
 Sensitive credentials are kept outside the repository.
 
@@ -246,38 +253,49 @@ dist/
 
 API credentials are intended to remain server-side and are never exposed to the frontend.
 
-🛠️ Technology Stack
-Frontend
-React
-TypeScript
-Vite
-Tailwind CSS
-Recharts
-Plotly
-WebSocket
-Backend
-Node.js
-serve.cjs
-REST API endpoints
-WebSocket support
-AI / ML
-Google Gemini
-OpenRouter
-openai/text-embedding-3-small
-BM25
-Semantic / vector retrieval
-Multilingual
-Bhashini
-NMT
-ASR
-TTS
-Language Detection
-Knowledge Base
-Legal and regulatory PDFs
-Chunked document corpus
-Metadata-aware retrieval
-Embedding cache
-📁 Project Structure
+---
+
+## 🛠️ Technology Stack
+
+### Frontend
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- Recharts
+- Plotly
+- WebSocket
+
+### Backend
+- Node.js
+- serve.cjs
+- REST API endpoints
+- WebSocket support
+
+### AI / ML
+- Google Gemini
+- OpenRouter
+- openai/text-embedding-3-small
+- BM25
+- Semantic / vector retrieval
+
+### Multilingual
+- Bhashini
+- NMT
+- ASR
+- TTS
+- Language Detection
+
+### Knowledge Base
+- Legal and regulatory PDFs
+- Chunked document corpus
+- Metadata-aware retrieval
+- Embedding cache
+
+---
+
+## 📁 Project Structure
+
 ip-sakti-sahayak/
 │
 ├── src/
@@ -304,13 +322,21 @@ ip-sakti-sahayak/
     ├── API
     ├── WIPO Treaty
     └── International References
-⚙️ Local Setup
-1. Clone the Repository
+
+---
+
+## ⚙️ Local Setup
+
+### 1. Clone the Repository
+
 git clone https://github.com/Yash13670/ip-sakti-sahayak.git
 cd ip-sakti-sahayak
-2. Install Dependencies
+
+### 2. Install Dependencies
+
 npm install
-3. Configure Environment Variables
+
+### 3. Configure Environment Variables
 
 Create a .env file in the project root:
 
@@ -321,11 +347,15 @@ BHASHINI_USER_ID=your_bhashini_user_id
 BHASHINI_ULCA_API_KEY=your_bhashini_ulca_key
 BHASHINI_AUTH_KEY=your_bhashini_auth_key
 
-Never commit .env or expose API keys in frontend code.
+> Never commit .env or expose API keys in frontend code.
 
-4. Start Development
+### 4. Start Development
+
 npm run dev
-🚀 Production Build
+
+---
+
+## 🚀 Production Build
 
 Build the frontend:
 
@@ -347,25 +377,31 @@ node serve.cjs
 
 The application should use the hosting platform's PORT environment variable in production.
 
-🔌 API Architecture
-Gemini
+---
+
+## 🔌 API Architecture
+
+### Gemini
+
 /api/gemini/*
 
 Used for:
+- Grounded answer generation
+- Claim extraction
+- Claim–evidence verification
 
-Grounded answer generation
-Claim extraction
-Claim–evidence verification
-OpenRouter
+### OpenRouter
+
 /api/openrouter/status
 /api/openrouter/embed
 /api/openrouter/embed-batch
 
 Used for:
+- Semantic embeddings
+- Vector retrieval
 
-Semantic embeddings
-Vector retrieval
-Bhashini
+### Bhashini
+
 /api/bhashini/status
 /api/bhashini/translate
 /api/bhashini/stt
@@ -373,12 +409,14 @@ Bhashini
 /api/bhashini/detect-language
 
 Used for:
+- Translation
+- Speech-to-text
+- Text-to-speech
+- Language detection
 
-Translation
-Speech-to-text
-Text-to-speech
-Language detection
-🧪 Verification Philosophy
+---
+
+## 🧪 Verification Philosophy
 
 IP-SAKTI Sahayak follows a strict evidence-first principle.
 
@@ -408,19 +446,24 @@ UNSUPPORTED
 
 This helps reduce unsupported AI-generated legal assertions and makes the screening process more transparent.
 
-🎯 Target Users
+---
+
+## 🎯 Target Users
 
 IP-SAKTI Sahayak is designed for:
 
-AYUSH researchers
-Ayurveda practitioners
-Traditional Knowledge researchers
-Startups and innovators
-Students and academic researchers
-IP consultants
-Legal professionals
-Organizations performing preliminary IP screening
-🌍 Vision
+- AYUSH researchers
+- Ayurveda practitioners
+- Traditional Knowledge researchers
+- Startups and innovators
+- Students and academic researchers
+- IP consultants
+- Legal professionals
+- Organizations performing preliminary IP screening
+
+---
+
+## 🌍 Vision
 
 India possesses a vast body of Traditional Knowledge and innovation.
 
@@ -430,63 +473,82 @@ Accessible → Evidence-Based → Explainable → Multilingual → India-Focused
 
 The long-term vision is to build a trustworthy AI-assisted layer that helps users identify potential IP and Traditional Knowledge concerns before moving toward formal professional or legal processes.
 
-🏆 Smart India Hackathon
-IP-SAKTI Sahayak
+---
+
+## 🏆 Smart India Hackathon
+
+### IP-SAKTI Sahayak
 
 The platform is designed around the challenge of improving accessibility to preliminary Intellectual Property and Traditional Knowledge screening for Indian innovations, particularly in the AYUSH ecosystem.
 
-Key Focus Areas
-🇮🇳 India-focused legal knowledge
-📚 Evidence-backed retrieval
-🤖 Responsible AI
-🌐 Multilingual accessibility
-🧾 Transparent citations
-🔍 Claim-level verification
-👨‍⚖️ Expert escalation
-🔭 Future Roadmap
-Phase 1 — SIH MVP
-Legal source ingestion
-Hybrid BM25 + semantic retrieval
-Citation verification
-India / International routing
-Preliminary screening reports
-Multilingual interface foundation
-Phase 2 — Enhanced Intelligence
-Expanded legal corpus
-Improved multilingual workflows
-Voice-first screening
-More advanced prior-art discovery
-Better expert escalation workflows
-Phase 3 — Scalable Platform
-Larger knowledge ecosystem
-Advanced evidence graphs
-Institutional dashboards
-Continuous corpus updates
-Enterprise / research integrations
-⚠️ Important Disclaimer
+### Key Focus Areas
+
+- 🇮🇳 India-focused legal knowledge
+- 📚 Evidence-backed retrieval
+- 🤖 Responsible AI
+- 🌐 Multilingual accessibility
+- 🧾 Transparent citations
+- 🔍 Claim-level verification
+- 👨‍⚖️ Expert escalation
+
+---
+
+## 🔭 Future Roadmap
+
+### Phase 1 — SIH MVP
+- Legal source ingestion
+- Hybrid BM25 + semantic retrieval
+- Citation verification
+- India / International routing
+- Preliminary screening reports
+- Multilingual interface foundation
+
+### Phase 2 — Enhanced Intelligence
+- Expanded legal corpus
+- Improved multilingual workflows
+- Voice-first screening
+- More advanced prior-art discovery
+- Better expert escalation workflows
+
+### Phase 3 — Scalable Platform
+- Larger knowledge ecosystem
+- Advanced evidence graphs
+- Institutional dashboards
+- Continuous corpus updates
+- Enterprise / research integrations
+
+---
+
+## ⚠️ Important Disclaimer
 
 IP-SAKTI Sahayak is an AI-assisted preliminary screening system.
 
-It does not:
+It does NOT:
 
-Grant or guarantee patent rights
-Determine final patentability
-Provide legal advice
-Replace a patent attorney or qualified IP professional
-Guarantee freedom-to-operate
-Guarantee acceptance or rejection by any IP authority
+- Grant or guarantee patent rights
+- Determine final patentability
+- Provide legal advice
+- Replace a patent attorney or qualified IP professional
+- Guarantee freedom-to-operate
+- Guarantee acceptance or rejection by any IP authority
 
 All results should be independently reviewed by a qualified professional before legal, commercial, or regulatory decisions are made.
 
-📄 License
+---
+
+## 📄 License
 
 This repository is intended for educational, research, and hackathon purposes.
 
 Please review the licensing and usage requirements of the underlying legal documents, datasets, APIs, models, and third-party services before commercial use.
 
-🇮🇳 Built for India
-IP-SAKTI Sahayak
-Evidence Before Assertion.
+---
+
+# 🇮🇳 Built for India
+
+## IP-SAKTI Sahayak
+
+### Evidence Before Assertion.
 
 # React + TypeScript + Vite
 
