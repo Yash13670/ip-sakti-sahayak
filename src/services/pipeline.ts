@@ -18,6 +18,7 @@ import type {
 import { bm25Retrieve, buildBM25Index } from './bm25';
 import { semanticRetrieve, buildSemanticIndex, getSemanticMode, getSemanticIndexStats } from './semantic';
 import { knowledgeBaseData } from '../data/kb';
+import { translateScreeningOutput } from './translateOutput';
 import { verifyClaimAgainstEvidence } from './verification';
 import { applyScreeningRules, calculateRisk } from './rules';
 import { generateGroundedAnswer } from './llm';
@@ -609,7 +610,8 @@ async function verifyClaims(
 
 export async function runScreeningPipeline(
   input: ParsedInput,
-  onTrace?: (event: TraceEvent) => void
+  onTrace?: (event: TraceEvent) => void,
+  language: string = 'en'
 ): Promise<ScreeningResult> {
   if (onTrace) traceCallback = onTrace;
 
@@ -694,7 +696,10 @@ export async function runScreeningPipeline(
   };
 
   console.log(`[Pipeline] Screening complete`);
-  return result;
+
+  // Translate output to user's language if not English
+  const translated = await translateScreeningOutput(result, language);
+  return translated;
 }
 
 // ─── Chat Pipeline ────────────────────────────────────────────────────────
@@ -702,7 +707,8 @@ export async function runScreeningPipeline(
 export async function runChatPipeline(
   query: string,
   jurisdiction: Jurisdiction,
-  onTrace?: (event: TraceEvent) => void
+  onTrace?: (event: TraceEvent) => void,
+  language: string = 'en'
 ): Promise<ScreeningResult> {
   const input: ParsedInput = {
     productName: query,
@@ -712,5 +718,5 @@ export async function runChatPipeline(
     innovationType: 'other',
     jurisdiction,
   };
-  return runScreeningPipeline(input, onTrace);
+  return runScreeningPipeline(input, onTrace, language);
 }

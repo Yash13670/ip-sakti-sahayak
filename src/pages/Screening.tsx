@@ -63,6 +63,7 @@ const DEMO_SCENARIOS = {
 export function Screening() {
   const {
     jurisdiction,
+    language,
     currentInput,
     setCurrentInput,
     currentResult,
@@ -103,7 +104,7 @@ export function Screening() {
       const result = await runScreeningPipeline(input, (event) => {
         // This is called by the pipeline to emit trace events
         useAppStore.getState().addTraceEvent(event);
-      });
+      }, language);
       setCurrentResult(result);
       addScreeningResult(result);
     } catch (err) {

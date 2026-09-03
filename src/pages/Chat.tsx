@@ -12,6 +12,7 @@ export function Chat() {
     addChatMessage,
     clearChat,
     jurisdiction,
+    language,
     openEvidenceModal,
     isProcessing,
     setIsProcessing,
@@ -40,7 +41,7 @@ export function Chat() {
     setIsProcessing(true);
 
     try {
-      const result = await runChatPipeline(input.trim(), jurisdiction);
+      const result = await runChatPipeline(input.trim(), jurisdiction, undefined, language);
 
       const assistantMessage: ChatMessage = {
         id: `msg_${Date.now() + 1}`,
