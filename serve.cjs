@@ -224,6 +224,11 @@ async function sarvamTranslate(text, sourceLanguage, targetLanguage) {
   const src = toSarvamLang(sourceLanguage);
   const tgt = toSarvamLang(targetLanguage);
 
+  // Languages not supported by mayura:v1 need sarvam-translate:v1
+  const mayuraLangs = ['en-IN','hi-IN','bn-IN','ta-IN','te-IN','mr-IN','gu-IN','kn-IN','ml-IN','pa-IN','od-IN'];
+  const needsTranslateV1 = !mayuraLangs.includes(tgt) || (src !== 'auto' && !mayuraLangs.includes(src));
+  const model = needsTranslateV1 ? 'sarvam-translate:v1' : 'mayura:v1';
+
   const res = await fetch(`${SARVAM_BASE}/translate`, {
     method: 'POST',
     headers: {
@@ -236,7 +241,7 @@ async function sarvamTranslate(text, sourceLanguage, targetLanguage) {
       target_language_code: tgt,
       speaker_gender: 'Female',
       mode: 'formal',
-      model: 'mayura:v1',
+      model,
     }),
   });
 
