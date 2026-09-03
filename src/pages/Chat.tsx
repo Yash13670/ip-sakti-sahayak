@@ -3,6 +3,8 @@ import { useAppStore } from '../store';
 import { runChatPipeline } from '../services/pipeline';
 import type { ChatMessage } from '../types';
 import { Send, Loader2, Eye, User, Bot, Trash2 } from 'lucide-react';
+import { AudioPlayer } from '../components/shared/AudioPlayer';
+import { VoiceInput } from '../components/shared/VoiceInput';
 
 export function Chat() {
   const {
@@ -174,6 +176,13 @@ export function Chat() {
                 })}
               </div>
 
+              {/* Audio player for assistant messages */}
+              {msg.role === 'assistant' && (
+                <div className="mt-2">
+                  <AudioPlayer text={msg.content} />
+                </div>
+              )}
+
               {/* Evidence attachments */}
               {msg.evidence && msg.evidence.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-border/50">
@@ -254,13 +263,16 @@ export function Chat() {
       </div>
 
       {/* Input */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
+        <VoiceInput
+          onResult={(text) => setInput(prev => prev ? prev + ' ' + text : text)}
+        />
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-          placeholder="Ask about IP, Traditional Knowledge, or legal provisions..."
+          placeholder="Ask about IP, Traditional Knowledge, or speak..."
           disabled={isProcessing}
           className="flex-1 px-4 py-3 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
         />

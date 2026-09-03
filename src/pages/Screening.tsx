@@ -16,6 +16,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
+import { AudioPlayer } from '../components/shared/AudioPlayer';
 
 const SCREENING_STRINGS = [
   'Prototype Demonstration Scenarios',
@@ -432,9 +433,12 @@ export function Screening() {
 
               {/* Summary */}
               <div className="bg-white rounded-xl border border-border p-6">
-                <h3 className="text-lg font-semibold text-text mb-3">
-                  {t('Screening Summary')}
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-text">
+                    {t('Screening Summary')}
+                  </h3>
+                  <AudioPlayer text={currentResult.generated_answer} />
+                </div>
                 <div className="text-sm text-text leading-relaxed whitespace-pre-wrap">
                   {currentResult.generated_answer.split('\n').map((line, i) => {
                     if (line.startsWith('## ')) {
