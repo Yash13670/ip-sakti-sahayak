@@ -9,10 +9,35 @@ import {
   FileText,
   Shield,
 } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
+
+const DASHBOARD_STRINGS = [
+  'Evidence-grounded preliminary IP & Traditional Knowledge screening assistant for AYUSH innovators and traditional formulation developers.',
+  'Formulation Screening Wizard',
+  'Assess your AYUSH formulation for preliminary IP/TK risks with evidence-grounded analysis.',
+  'Start Screening',
+  'Legal Chat Assistant',
+  'Ask questions about IP, Traditional Knowledge, and relevant legal provisions.',
+  'Ask Legal Assistant',
+  'Knowledge Base Chunks',
+  'Verified Sources',
+  'Screening Sessions',
+  'Expert Review Requests',
+  'Evidence & Sources',
+  'Browse the knowledge base',
+  'Reports',
+  'View screening reports',
+  'Verification Tests',
+  'Test the verification engine',
+  'Disclaimer:',
+  'IP-SAKTI Sahayak provides preliminary IP/TK screening assistance only. It does not constitute legal advice or a patentability opinion. Consult a qualified IP professional for final legal assessment.',
+  'Dashboard',
+];
 
 export function Dashboard() {
   const { setCurrentScreen, screeningResults, escalationRequests } =
     useAppStore();
+  const { t } = useTranslation(DASHBOARD_STRINGS);
 
   // Initialize KB on first render
   useEffect(() => {
@@ -34,8 +59,7 @@ export function Dashboard() {
           </h1>
         </div>
         <p className="text-text-secondary text-sm max-w-lg mx-auto">
-          Evidence-grounded preliminary IP & Traditional Knowledge screening
-          assistant for AYUSH innovators and traditional formulation developers.
+          {t('Evidence-grounded preliminary IP & Traditional Knowledge screening assistant for AYUSH innovators and traditional formulation developers.')}
         </p>
 
       </div>
@@ -50,17 +74,16 @@ export function Dashboard() {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-text mb-1">
-                Formulation Screening Wizard
+                {t('Formulation Screening Wizard')}
               </h3>
               <p className="text-sm text-text-secondary mb-4">
-                Assess your AYUSH formulation for preliminary IP/TK risks with
-                evidence-grounded analysis.
+                {t('Assess your AYUSH formulation for preliminary IP/TK risks with evidence-grounded analysis.')}
               </p>
               <button
                 onClick={() => setCurrentScreen('screening')}
                 className="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-light transition-colors cursor-pointer"
               >
-                Start Screening
+                {t('Start Screening')}
               </button>
             </div>
           </div>
@@ -74,17 +97,16 @@ export function Dashboard() {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-text mb-1">
-                Legal Chat Assistant
+                {t('Legal Chat Assistant')}
               </h3>
               <p className="text-sm text-text-secondary mb-4">
-                Ask questions about IP, Traditional Knowledge, and relevant
-                legal provisions.
+                {t('Ask questions about IP, Traditional Knowledge, and relevant legal provisions.')}
               </p>
               <button
                 onClick={() => setCurrentScreen('chat')}
                 className="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-light transition-colors cursor-pointer"
               >
-                Ask Legal Assistant
+                {t('Ask Legal Assistant')}
               </button>
             </div>
           </div>
@@ -96,13 +118,13 @@ export function Dashboard() {
         <div className="bg-white rounded-xl border border-border p-4 text-center">
           <div className="text-2xl font-bold text-primary">{totalChunks}</div>
           <div className="text-xs text-text-secondary mt-1">
-            Knowledge Base Chunks
+            {t('Knowledge Base Chunks')}
           </div>
         </div>
         <div className="bg-white rounded-xl border border-border p-4 text-center">
           <div className="text-2xl font-bold text-success">{verifiedSources}</div>
           <div className="text-xs text-text-secondary mt-1">
-            Verified Sources
+            {t('Verified Sources')}
           </div>
         </div>
         <div className="bg-white rounded-xl border border-border p-4 text-center">
@@ -110,7 +132,7 @@ export function Dashboard() {
             {screeningResults.length}
           </div>
           <div className="text-xs text-text-secondary mt-1">
-            Screening Sessions
+            {t('Screening Sessions')}
           </div>
         </div>
         <div className="bg-white rounded-xl border border-border p-4 text-center">
@@ -118,7 +140,7 @@ export function Dashboard() {
             {escalationRequests.length}
           </div>
           <div className="text-xs text-text-secondary mt-1">
-            Expert Review Requests
+            {t('Expert Review Requests')}
           </div>
         </div>
       </div>
@@ -131,9 +153,9 @@ export function Dashboard() {
         >
           <BookOpen className="w-5 h-5 text-accent" />
           <div>
-            <div className="text-sm font-medium text-text">Evidence & Sources</div>
+            <div className="text-sm font-medium text-text">{t('Evidence & Sources')}</div>
             <div className="text-xs text-text-secondary">
-              Browse the knowledge base
+              {t('Browse the knowledge base')}
             </div>
           </div>
         </button>
@@ -143,9 +165,9 @@ export function Dashboard() {
         >
           <FileText className="w-5 h-5 text-accent" />
           <div>
-            <div className="text-sm font-medium text-text">Reports</div>
+            <div className="text-sm font-medium text-text">{t('Reports')}</div>
             <div className="text-xs text-text-secondary">
-              View screening reports
+              {t('View screening reports')}
             </div>
           </div>
         </button>
@@ -156,10 +178,10 @@ export function Dashboard() {
           <Search className="w-5 h-5 text-accent" />
           <div>
             <div className="text-sm font-medium text-text">
-              Verification Tests
+              {t('Verification Tests')}
             </div>
             <div className="text-xs text-text-secondary">
-              Test the verification engine
+              {t('Test the verification engine')}
             </div>
           </div>
         </button>
@@ -167,10 +189,7 @@ export function Dashboard() {
 
       {/* Disclaimer */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800 leading-relaxed">
-        <strong>Disclaimer:</strong> IP-SAKTI Sahayak provides preliminary
-        IP/TK screening assistance only. It does not constitute legal advice
-        or a patentability opinion. Consult a qualified IP professional for
-        final legal assessment.
+        <strong>{t('Disclaimer:')}</strong> {t('IP-SAKTI Sahayak provides preliminary IP/TK screening assistance only. It does not constitute legal advice or a patentability opinion. Consult a qualified IP professional for final legal assessment.')}
       </div>
     </div>
   );

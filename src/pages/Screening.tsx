@@ -15,6 +15,32 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
+
+const SCREENING_STRINGS = [
+  'Prototype Demonstration Scenarios',
+  'Formulation', 'Traditional Knowledge', 'Innovation',
+  'Step 1: Formulation Details', 'Product Name *', 'Ingredients (comma-separated) *', 'Description (optional)',
+  'Step 2: Traditional Knowledge',
+  'Is the formulation connected to a traditional formulation or traditional knowledge?',
+  'Yes', 'Modified', 'No known reference', 'Not sure',
+  'Directly based on traditional knowledge', 'Modified from a traditional formulation',
+  'No traditional knowledge connection', 'Uncertain about TK connection',
+  'Step 3: Innovation Type', 'What is the main innovation?',
+  'Traditional formulation', 'New combination', 'New dosage/formulation',
+  'New extraction/process', 'New composition', 'Other',
+  'Active Jurisdiction:',
+  'Back', 'Next', 'Processing...', 'Run Screening',
+  'Screening Results', 'New Screening', 'Escalate to IP Expert',
+  'Running screening pipeline...', 'Initializing...',
+  'Screening Summary', 'Claim Verification Summary',
+  'Recommended Next Step', 'Retrieved Evidence',
+  'Retrieval Trace', 'stages',
+  'Verification Engine Test',
+  'These are synthetic test cases to verify the verification engine. They do not present real legal evidence.',
+  'View Full Evidence',
+  'These are preliminary screening labels only and do not constitute a patentability opinion.',
+];
 
 const DEMO_SCENARIOS = {
   A: {
@@ -50,6 +76,7 @@ export function Screening() {
     openEvidenceModal,
     setEscalationModalOpen,
   } = useAppStore();
+  const { t } = useTranslation(SCREENING_STRINGS);
 
   const [step, setStep] = useState(1);
   const [showResults, setShowResults] = useState(false);
@@ -96,7 +123,7 @@ export function Screening() {
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
               <span className="text-sm font-medium text-amber-800">
-                Prototype Demonstration Scenarios
+                {t('Prototype Demonstration Scenarios')}
               </span>
             </div>
             <div className="flex gap-3">
@@ -135,7 +162,7 @@ export function Screening() {
                       step === s ? 'text-primary font-medium' : 'text-text-secondary'
                     }`}
                   >
-                    {s === 1 ? 'Formulation' : s === 2 ? 'Traditional Knowledge' : 'Innovation'}
+                    {s === 1 ? t('Formulation') : s === 2 ? t('Traditional Knowledge') : t('Innovation')}
                   </span>
                   {s < 3 && <ChevronRight className="w-3 h-3 text-gray-300" />}
                 </div>
@@ -147,11 +174,11 @@ export function Screening() {
               {step === 1 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-text">
-                    Step 1: Formulation Details
+                    {t('Step 1: Formulation Details')}
                   </h3>
                   <div>
                     <label className="block text-sm font-medium text-text mb-1">
-                      Product Name *
+                      {t('Product Name *')}
                     </label>
                     <input
                       type="text"
@@ -165,7 +192,7 @@ export function Screening() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text mb-1">
-                      Ingredients (comma-separated) *
+                      {t('Ingredients (comma-separated) *')}
                     </label>
                     <input
                       type="text"
@@ -182,7 +209,7 @@ export function Screening() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text mb-1">
-                      Description (optional)
+                      {t('Description (optional)')}
                     </label>
                     <textarea
                       value={currentInput.description}
@@ -201,18 +228,17 @@ export function Screening() {
               {step === 2 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-text">
-                    Step 2: Traditional Knowledge
+                    {t('Step 2: Traditional Knowledge')}
                   </h3>
                   <p className="text-sm text-text-secondary">
-                    Is the formulation connected to a traditional formulation or
-                    traditional knowledge?
+                    {t('Is the formulation connected to a traditional formulation or traditional knowledge?')}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {([
-                      { value: 'yes' as TraditionalReference, label: 'Yes', desc: 'Directly based on traditional knowledge' },
-                      { value: 'modified' as TraditionalReference, label: 'Modified', desc: 'Modified from a traditional formulation' },
-                      { value: 'no' as TraditionalReference, label: 'No known reference', desc: 'No traditional knowledge connection' },
-                      { value: 'unsure' as TraditionalReference, label: 'Not sure', desc: 'Uncertain about TK connection' },
+                      { value: 'yes' as TraditionalReference, label: t('Yes'), desc: t('Directly based on traditional knowledge') },
+                      { value: 'modified' as TraditionalReference, label: t('Modified'), desc: t('Modified from a traditional formulation') },
+                      { value: 'no' as TraditionalReference, label: t('No known reference'), desc: t('No traditional knowledge connection') },
+                      { value: 'unsure' as TraditionalReference, label: t('Not sure'), desc: t('Uncertain about TK connection') },
                     ]).map((opt) => (
                       <button
                         key={opt.value}
@@ -242,19 +268,19 @@ export function Screening() {
               {step === 3 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-text">
-                    Step 3: Innovation Type
+                    {t('Step 3: Innovation Type')}
                   </h3>
                   <p className="text-sm text-text-secondary">
-                    What is the main innovation?
+                    {t('What is the main innovation?')}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {([
-                      { value: 'traditional_formulation' as InnovationType, label: 'Traditional formulation' },
-                      { value: 'new_combination' as InnovationType, label: 'New combination' },
-                      { value: 'new_dosage' as InnovationType, label: 'New dosage/formulation' },
-                      { value: 'new_process' as InnovationType, label: 'New extraction/process' },
-                      { value: 'new_composition' as InnovationType, label: 'New composition' },
-                      { value: 'other' as InnovationType, label: 'Other' },
+                      { value: 'traditional_formulation' as InnovationType, label: t('Traditional formulation') },
+                      { value: 'new_combination' as InnovationType, label: t('New combination') },
+                      { value: 'new_dosage' as InnovationType, label: t('New dosage/formulation') },
+                      { value: 'new_process' as InnovationType, label: t('New extraction/process') },
+                      { value: 'new_composition' as InnovationType, label: t('New composition') },
+                      { value: 'other' as InnovationType, label: t('Other') },
                     ]).map((opt) => (
                       <button
                         key={opt.value}
@@ -277,7 +303,7 @@ export function Screening() {
 
                   {/* Jurisdiction display */}
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <span className="text-xs text-text-secondary">Active Jurisdiction: </span>
+                    <span className="text-xs text-text-secondary">{t('Active Jurisdiction:')} </span>
                     <span className="text-sm font-medium text-text">
                       {jurisdiction === 'India' ? '🇮🇳' : '🌍'} {jurisdiction}
                     </span>
@@ -292,7 +318,7 @@ export function Screening() {
                   disabled={step === 1}
                   className="flex items-center gap-1 px-4 py-2 text-sm text-text-secondary hover:text-text disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                 >
-                  <ChevronLeft className="w-4 h-4" /> Back
+                  <ChevronLeft className="w-4 h-4" /> {t('Back')}
                 </button>
                 <div className="flex gap-2">
                   {step < 3 ? (
@@ -304,7 +330,7 @@ export function Screening() {
                       }
                       className="flex items-center gap-1 px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-light disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-colors"
                     >
-                      Next <ChevronRight className="w-4 h-4" />
+                      {t('Next')} <ChevronRight className="w-4 h-4" />
                     </button>
                   ) : (
                     <button
@@ -314,11 +340,11 @@ export function Screening() {
                     >
                       {isProcessing ? (
                         <>
-                          <Loader2 className="w-4 h-4 animate-spin" /> Processing...
+                          <Loader2 className="w-4 h-4 animate-spin" /> {t('Processing...')}
                         </>
                       ) : (
                         <>
-                          <Play className="w-4 h-4" /> Run Screening
+                          <Play className="w-4 h-4" /> {t('Run Screening')}
                         </>
                       )}
                     </button>
@@ -334,7 +360,7 @@ export function Screening() {
       {showResults && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-text">Screening Results</h2>
+            <h2 className="text-xl font-bold text-text">{t('Screening Results')}</h2>
             <div className="flex gap-2">
               <button
                 onClick={() => {
@@ -345,7 +371,7 @@ export function Screening() {
                 }}
                 className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-gray-50 cursor-pointer"
               >
-                New Screening
+                {t('New Screening')}
               </button>
               {currentResult && (
                 <>
@@ -353,7 +379,7 @@ export function Screening() {
                     onClick={() => setEscalationModalOpen(true)}
                     className="px-4 py-2 text-sm bg-warning text-white rounded-lg hover:bg-warning/90 cursor-pointer"
                   >
-                    Escalate to IP Expert
+                    {t('Escalate to IP Expert')}
                   </button>
                 </>
               )}
@@ -364,12 +390,12 @@ export function Screening() {
             <div className="bg-white rounded-xl border border-border p-8 text-center">
               <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
               <p className="text-sm text-text-secondary">
-                Running screening pipeline...
+                {t('Running screening pipeline...')}
               </p>
               <p className="text-xs text-text-secondary mt-1">
                 {traceEvents.length > 0
-                  ? traceEvents[traceEvents.length - 1]?.label
-                  : 'Initializing...'}
+                  ?                  traceEvents[traceEvents.length - 1]?.label
+                  : t('Initializing...')}
               </p>
             </div>
           )}
@@ -400,14 +426,14 @@ export function Screening() {
                 </div>
                 <p className="text-sm mb-3">{currentResult.risk_reason}</p>
                 <div className="text-xs text-text-secondary italic">
-                  These are preliminary screening labels only and do not constitute a patentability opinion.
+                  {t('These are preliminary screening labels only and do not constitute a patentability opinion.')}
                 </div>
               </div>
 
               {/* Summary */}
               <div className="bg-white rounded-xl border border-border p-6">
                 <h3 className="text-lg font-semibold text-text mb-3">
-                  Screening Summary
+                  {t('Screening Summary')}
                 </h3>
                 <div className="text-sm text-text leading-relaxed whitespace-pre-wrap">
                   {currentResult.generated_answer.split('\n').map((line, i) => {
@@ -464,7 +490,7 @@ export function Screening() {
               {/* Claim Verification */}
               <div className="bg-white rounded-xl border border-border p-6">
                 <h3 className="text-lg font-semibold text-text mb-3">
-                  Claim Verification Summary
+                  {t('Claim Verification Summary')}
                 </h3>
                 <div className="grid grid-cols-4 gap-3 mb-4">
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
@@ -564,7 +590,7 @@ export function Screening() {
                         }
                         className="mt-2 flex items-center gap-1 text-xs text-primary hover:text-primary-light cursor-pointer"
                       >
-                        <Eye className="w-3 h-3" /> View Full Evidence
+                        <Eye className="w-3 h-3" /> {t('View Full Evidence')}
                       </button>
                     </div>
                   ))}
@@ -574,7 +600,7 @@ export function Screening() {
               {/* Next Step */}
               <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
                 <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                  Recommended Next Step
+                  {t('Recommended Next Step')}
                 </h3>
                 <p className="text-sm text-blue-800">
                   {currentResult.recommended_next_step}
@@ -685,7 +711,7 @@ export function Screening() {
           className="w-full flex items-center justify-between p-4 cursor-pointer"
         >
           <h3 className="text-sm font-semibold text-text">
-            Verification Engine Test
+            {t('Verification Engine Test')}
           </h3>
           {showTests ? (
             <ChevronUp className="w-4 h-4 text-text-secondary" />
@@ -696,7 +722,7 @@ export function Screening() {
         {showTests && (
           <div className="border-t border-border p-4 space-y-3">
             <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg">
-              These are synthetic test cases to verify the verification engine. They do not present real legal evidence.
+              {t('These are synthetic test cases to verify the verification engine. They do not present real legal evidence.')}
             </div>
             {tests.map((t) => (
               <div
