@@ -703,11 +703,14 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(5210, '127.0.0.1', () => {
+const PORT = parseInt(process.env.PORT || '5210', 10);
+const HOST = '0.0.0.0';
+
+server.listen(PORT, HOST, () => {
   const geminiStatus = GEMINI_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
   const openrouterStatus = OPENROUTER_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
   const bhashiniStatus = (BHASHINI_USER_ID && BHASHINI_ULCA_API_KEY && BHASHINI_AUTH_KEY) ? 'CONNECTED' : 'NOT CONFIGURED';
-  console.log(`SERVER_READY on http://127.0.0.1:5210`);
+  console.log(`SERVER_READY on http://${HOST}:${PORT}`);
   console.log(`Gemini API: ${geminiStatus}`);
   console.log(`OpenRouter API: ${openrouterStatus}`);
   console.log(`Bhashini API: ${bhashiniStatus}`);
