@@ -1,7 +1,7 @@
 /**
- * UI Translation Service — Robust version
- * Uses Sarvam AI translation API with localStorage caching.
- * Guarantees re-render via Zustand store integration.
+ * UI Translation Service — Final robust version
+ * Translations load synchronously from cache, async from API.
+ * UI always shows correct language immediately from cache.
  */
 
 const CACHE_PREFIX = 'ipsakti_ui_trans_';
@@ -80,18 +80,28 @@ async function translateStrings(
     });
     await Promise.all(promises);
     if (i + BATCH < strings.length) {
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 150));
     }
   }
   return results;
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────
+// ─── Translation State ────────────────────────────────────────────────────
 
 let currentLang = 'en';
 let currentTranslations: Record<string, string> = {};
 let loadingPromise: Promise<void> | null = null;
-let loadingLang = '';
+// Version counter — increments when translations update
+let translationVersion = 0;
+
+/**
+ * Get current translation version. Components use this to detect changes.
+ */
+export function getTranslationVersion(): number {
+  return translationVersion;
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────
 
 export function getCurrentTranslations(): Record<string, string> {
   return currentTranslations;
@@ -102,8 +112,19 @@ export function getCurrentLanguage(): string {
 }
 
 /**
- * Load translations. Singleton — only one load at a time.
- * Returns immediately if cache is complete.
+ * Synchronously load cached translations for a language.
+ * Returns the cache immediately — no API call.
+ */
+export function loadCachedTranslations(lang: string): Record<string, string> {
+  if (lang === 'en') return {};
+  const cache = loadCache(lang);
+  currentLang = lang;
+  currentTranslations = { ...cache };
+  return cache;
+}
+
+/**
+ * Load translations. First loads from cache (sync), then fetches missing from API.
  */
 export async function loadTranslations(
   lang: string,
@@ -113,36 +134,36 @@ export async function loadTranslations(
     if (currentLang !== 'en') {
       currentLang = 'en';
       currentTranslations = {};
+      translationVersion++;
     }
     return;
   }
 
   currentLang = lang;
 
-  // Load from cache
+  // Load from cache synchronously
   const cache = loadCache(lang);
   currentTranslations = { ...cache };
 
   // Find missing
   const missing = strings.filter(s => !cache[s] && s.trim().length > 0);
 
-  if (missing.length === 0) return;
+  if (missing.length === 0) {
+    translationVersion++;
+    return;
+  }
 
-  // Singleton — don't start another load if one is in progress for same lang
-  if (loadingPromise && loadingLang === lang) return loadingPromise;
-
-  loadingLang = lang;
   loadingPromise = (async () => {
     try {
       const translated = await translateStrings(missing, lang);
       const updatedCache = { ...currentTranslations, ...translated };
       currentTranslations = updatedCache;
       saveCache(lang, updatedCache);
+      translationVersion++;
     } catch (err) {
       console.error('[UI Translation] Failed:', err);
     } finally {
       loadingPromise = null;
-      loadingLang = '';
     }
   })();
 
@@ -150,7 +171,7 @@ export async function loadTranslations(
 }
 
 /**
- * Get a translated string. Returns original if no translation.
+ * Get a translated string.
  */
 export function t(key: string): string {
   if (currentLang === 'en') return key;
