@@ -74,8 +74,11 @@ async function translateStrings(
     const promises = batch.map(async (str) => {
       try {
         results[str] = await callSarvamTranslate(str, targetLang);
-      } catch {
-        results[str] = str;
+      } catch (err) {
+        // IMPORTANT: do NOT cache the fallback as if it were a real translation.
+        // Leaving it out of `results` keeps it "missing" so it gets retried
+        // on the next load instead of being permanently stuck in English.
+        console.error(`[UI Translation] Failed to translate "${str}" to ${targetLang}:`, err);
       }
     });
     await Promise.all(promises);
