@@ -240,7 +240,7 @@ async function bhashiniTranslate(text, sourceLanguage, targetLanguage) {
 
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/translate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json',   'X-API-KEY': BHASHINI_API_KEY },
     body: JSON.stringify({
       inputText: text,
       inputLanguage: src,
@@ -253,9 +253,8 @@ async function bhashiniTranslate(text, sourceLanguage, targetLanguage) {
     throw new Error(`Bhashini translate error: ${res.status} ${err}`);
   }
 
-  const data = await res.json();
-  // Bhashini returns { translatedSentences: [...] }
-  const translated = data.translatedSentences?.[0] || text;
+const translatedText = await res.text();
+const translated = translatedText.trim() || text;
   return {
     translatedText: translated,
     sourceLanguage,
@@ -287,7 +286,7 @@ async function bhashiniSTT(audioBase64, language, audioFormat) {
 
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/asr`, {
     method: 'POST',
-    headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+    headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'X-API-KEY': BHASHINI_API_KEY },
     body: multipartBody,
   });
 
@@ -309,7 +308,7 @@ async function bhashiniTTS(text, language, gender) {
 
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/synthesize`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json',  'X-API-KEY': BHASHINI_API_KEY },
     body: JSON.stringify({
       text,
       language: langName,
