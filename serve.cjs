@@ -38,6 +38,8 @@ const MIME = {
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEMINI_KEY || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 const BHASHINI_API_KEY = process.env.BHASHINI_INFERENCE_KEY || process.env.SARVAM_API_KEY || '';
+// Bhashini.ai API works without a key for basic usage.
+// The X-API-KEY is optional — only needed for higher rate limits or premium voices.
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const EMBEDDING_MODEL = 'gemini-embedding-2';
 const CHAT_MODEL = 'gemini-2.5-flash';
@@ -235,12 +237,12 @@ async function bhashiniTranslate(text, sourceLanguage, targetLanguage) {
   const src = sourceLanguage === 'auto' || !sourceLanguage ? 'Auto' : toBhashiniLang(sourceLanguage);
   const tgt = toBhashiniLang(targetLanguage);
 
+  const headers = { 'Content-Type': 'application/json' };
+  if (BHASHINI_API_KEY) headers['X-API-KEY'] = BHASHINI_API_KEY;
+
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/translate`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-KEY': BHASHINI_API_KEY,
-    },
+    headers,
     body: JSON.stringify({
       inputText: text,
       inputLanguage: src,
@@ -285,12 +287,12 @@ async function bhashiniSTT(audioBase64, language, audioFormat) {
   const multipartBody = Buffer.concat(parts);
   console.log(`[Bhashini STT] Sending ${multipartBody.length} bytes to Bhashini API`);
 
+  const headers = { 'Content-Type': `multipart/form-data; boundary=${boundary}` };
+  if (BHASHINI_API_KEY) headers['X-API-KEY'] = BHASHINI_API_KEY;
+
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/asr`, {
     method: 'POST',
-    headers: {
-      'Content-Type': `multipart/form-data; boundary=${boundary}`,
-      'X-API-KEY': BHASHINI_API_KEY,
-    },
+    headers,
     body: multipartBody,
   });
 
@@ -310,12 +312,12 @@ async function bhashiniTTS(text, language, gender) {
   const langName = toBhashiniLang(language);
   const voiceName = gender === 'male' ? 'Male1' : 'Female1';
 
+  const headers = { 'Content-Type': 'application/json' };
+  if (BHASHINI_API_KEY) headers['X-API-KEY'] = BHASHINI_API_KEY;
+
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/synthesize`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-KEY': BHASHINI_API_KEY,
-    },
+    method: 'POST',r
+    headers,
     body: JSON.stringify({
       text,
       language: langName,
@@ -342,12 +344,12 @@ async function bhashiniTTS(text, language, gender) {
 async function bhashiniDetectLanguage(text) {
   // Bhashini doesn't have a dedicated language detection endpoint.
   // We use translation with 'Auto' source language — the response includes detectedInputLanguages.
+  const headers = { 'Content-Type': 'application/json' };
+  if (BHASHINI_API_KEY) headers['X-API-KEY'] = BHASHINI_API_KEY;
+
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/translate`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-KEY': BHASHINI_API_KEY,
-    },
+    headers,
     body: JSON.stringify({
       inputText: text.substring(0, 500),
       inputLanguage: 'Auto',
@@ -550,17 +552,14 @@ const server = http.createServer(async (req, res) => {
   // ─── Bhashini AI Status ────────────────────────────────────────────
 
   if (url === '/api/sarvam/status' && req.method === 'GET') {
-    if (!BHASHINI_API_KEY) {
-      return jsonResponse(res, 200, { configured: false, working: false });
-    }
-    // Test the API key with a lightweight translation call
+    // Bhashini.ai works without a key for basic usage.
+    // Test with a lightweight translation call.
     try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (BHASHINI_API_KEY) headers['X-API-KEY'] = BHASHINI_API_KEY;
       const testRes = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/translate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-KEY': BHASHINI_API_KEY,
-        },
+        headers,
         body: JSON.stringify({
           inputText: 'Hello',
           inputLanguage: 'English',
@@ -570,13 +569,11 @@ const server = http.createServer(async (req, res) => {
       if (testRes.ok) {
         return jsonResponse(res, 200, { configured: true, working: true });
       }
-      const errData = await testRes.json().catch(() => ({}));
-      const isAuth = testRes.status === 401;
-      console.log(`[Bhashini Status] API key test failed: ${testRes.status} (${isAuth ? 'auth' : 'unknown'})`);
+      console.log(`[Bhashini Status] Test failed: ${testRes.status}`);
       return jsonResponse(res, 200, {
         configured: true,
         working: false,
-        error: isAuth ? 'invalid_key' : 'api_error',
+        error: 'api_error',
       });
     } catch (err) {
       console.error('[Bhashini Status] Test failed:', err.message);
@@ -586,9 +583,6 @@ const server = http.createServer(async (req, res) => {
 
   // Bhashini Translation (NMT)
   if (url === '/api/sarvam/translate' && req.method === 'POST') {
-    if (!BHASHINI_API_KEY) {
-      return jsonResponse(res, 503, { error: 'Bhashini not configured. Set BHASHINI_INFERENCE_KEY in env' });
-    }
     try {
       const body = await readBody(req);
       const { text, sourceLanguage, targetLanguage } = body;
@@ -605,9 +599,6 @@ const server = http.createServer(async (req, res) => {
 
   // Bhashini Speech-to-Text (ASR)
   if (url === '/api/sarvam/stt' && req.method === 'POST') {
-    if (!BHASHINI_API_KEY) {
-      return jsonResponse(res, 503, { error: 'Bhashini not configured' });
-    }
     try {
       const body = await readBody(req);
       const { audioBase64, language, audioFormat } = body;
@@ -624,9 +615,6 @@ const server = http.createServer(async (req, res) => {
 
   // Bhashini Text-to-Speech (TTS)
   if (url === '/api/sarvam/tts' && req.method === 'POST') {
-    if (!BHASHINI_API_KEY) {
-      return jsonResponse(res, 503, { error: 'Bhashini not configured' });
-    }
     try {
       const body = await readBody(req);
       const { text, language, gender } = body;
@@ -643,9 +631,6 @@ const server = http.createServer(async (req, res) => {
 
   // Bhashini Language Detection
   if (url === '/api/sarvam/detect-language' && req.method === 'POST') {
-    if (!BHASHINI_API_KEY) {
-      return jsonResponse(res, 503, { error: 'Bhashini not configured' });
-    }
     try {
       const body = await readBody(req);
       const { text } = body;
