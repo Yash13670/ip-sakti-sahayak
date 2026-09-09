@@ -1,7 +1,8 @@
 /**
- * Sarvam AI Client Service
- * All Sarvam AI calls go through the server-side proxy (/api/sarvam/*).
+ * Bhashini AI Client Service
+ * All Bhashini AI calls go through the server-side proxy (/api/sarvam/*).
  * API keys are NEVER exposed to the browser.
+ * Bhashini is India's government-backed FREE translation/STT/TTS platform.
  *
  * Services:
  * - Translation (NMT) — Indian language translation
@@ -35,10 +36,10 @@ export type LanguageCode = typeof SUPPORTED_LANGUAGES[number]['code'];
 
 // ─── Status Check ─────────────────────────────────────────────────────────
 
-let cachedStatus: { configured: boolean } = { configured: false };
+let cachedStatus: { configured: boolean; working?: boolean; error?: string } = { configured: false };
 let statusChecked = false;
 
-export async function checkSarvamStatus(): Promise<{ configured: boolean }> {
+export async function checkSarvamStatus(): Promise<{ configured: boolean; working?: boolean; error?: string }> {
   if (statusChecked) return cachedStatus;
   try {
     const res = await fetch(`${PROXY_BASE}/status`);
@@ -72,7 +73,7 @@ export async function translate(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `Sarvam translate error: ${res.status}`);
+    throw new Error(err.error || `Bhashini translate error: ${res.status}`);
   }
 
   return res.json();
@@ -93,7 +94,7 @@ export async function speechToText(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `Sarvam STT error: ${res.status}`);
+    throw new Error(err.error || `Bhashini STT error: ${res.status}`);
   }
 
   return res.json();
@@ -114,7 +115,7 @@ export async function textToSpeech(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `Sarvam TTS error: ${res.status}`);
+    throw new Error(err.error || `Bhashini TTS error: ${res.status}`);
   }
 
   return res.json();
@@ -133,7 +134,7 @@ export async function detectLanguage(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `Sarvam detect language error: ${res.status}`);
+    throw new Error(err.error || `Bhashini detect language error: ${res.status}`);
   }
 
   return res.json();

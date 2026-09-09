@@ -25,7 +25,7 @@ export function AudioPlayer({ text, className = '' }: AudioPlayerProps) {
     setLoading(true);
     try {
       // Trim text to first 500 chars for TTS.
-      // Sarvam bulbul:v3 works best with English/Roman text.
+      // Bhashini TTS works best with English/Roman text.
       const ttsText = text.substring(0, 500).replace(/[#*\-\n]+/g, ' ').trim();
       if (!ttsText) return;
 

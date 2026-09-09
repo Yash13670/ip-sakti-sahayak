@@ -7,7 +7,7 @@ const PROXY_BASE = '/api/sarvam';
 
 /**
  * Translate a long text chunk to the target language.
- * Sends in parts if text is too long (Sarvam limit: 1000 chars per request).
+ * Sends in parts if text is too long.
  */
 async function translateChunk(text: string, targetLang: string): Promise<string> {
   if (!text || targetLang === 'en') return text;
@@ -16,7 +16,7 @@ async function translateChunk(text: string, targetLang: string): Promise<string>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      text: text.substring(0, 990), // Sarvam mayura limit
+      text: text.substring(0, 990),
       sourceLanguage: 'en',
       targetLanguage: targetLang,
     }),

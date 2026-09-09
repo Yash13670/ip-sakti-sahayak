@@ -1,7 +1,8 @@
 /**
- * UI Translation Service — Final robust version
- * Translations load synchronously from cache, async from API.
- * UI always shows correct language immediately from cache.
+ * UI Translation Service — Shared Store Version
+ * Single source of truth for all translations.
+ * All components read from the same translations map.
+ * When language changes, ALL translations update atomically.
  */
 
 const CACHE_PREFIX = 'ipsakti_ui_trans_';
@@ -44,9 +45,9 @@ export function saveLanguage(lang: string): void {
   } catch { /* ignore */ }
 }
 
-// ─── Sarvam Translation ───────────────────────────────────────────────────
+// ─── Bhashini Translation ──────────────────────────────────────────────────
 
-async function callSarvamTranslate(text: string, targetLang: string): Promise<string> {
+async function callBhashiniTranslate(text: string, targetLang: string): Promise<string> {
   const res = await fetch('/api/sarvam/translate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -57,9 +58,20 @@ async function callSarvamTranslate(text: string, targetLang: string): Promise<st
     }),
   });
 
-  if (!res.ok) throw new Error(`Translation API error: ${res.status}`);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    // Surface specific error types so callers can handle them
+    const errorMsg = errData.error || `Translation API error: ${res.status}`;
+    throw new Error(errorMsg);
+  }
   const data = await res.json();
   return data.translatedText || text;
+}
+
+let translationQuotaExhausted = false;
+
+export function isTranslationQuotaExhausted(): boolean {
+  return translationQuotaExhausted;
 }
 
 async function translateStrings(
@@ -69,19 +81,32 @@ async function translateStrings(
   const results: Record<string, string> = {};
   const BATCH = 5;
 
+  // If we already know quota is exhausted, don't bother retrying
+  if (translationQuotaExhausted) {
+    for (const str of strings) results[str] = str;
+    return results;
+  }
+
   for (let i = 0; i < strings.length; i += BATCH) {
     const batch = strings.slice(i, i + BATCH);
     const promises = batch.map(async (str) => {
       try {
-        results[str] = await callSarvamTranslate(str, targetLang);
-      } catch (err) {
+        results[str] = await callBhashiniTranslate(str, targetLang);
+      } catch (err: any) {
         // IMPORTANT: do NOT cache the fallback as if it were a real translation.
         // Leaving it out of `results` keeps it "missing" so it gets retried
         // on the next load instead of being permanently stuck in English.
         console.error(`[UI Translation] Failed to translate "${str}" to ${targetLang}:`, err);
+        // Detect quota/API exhaustion
+        if (err?.message?.includes('quota') || err?.message?.includes('402') || err?.message?.includes('503')) {
+          translationQuotaExhausted = true;
+          console.warn('[Translation] Bhashini API unavailable — translations paused');
+        }
       }
     });
     await Promise.all(promises);
+    // Stop early if quota is exhausted
+    if (translationQuotaExhausted) break;
     if (i + BATCH < strings.length) {
       await new Promise(r => setTimeout(r, 150));
     }
@@ -89,25 +114,16 @@ async function translateStrings(
   return results;
 }
 
-// ─── Translation State ────────────────────────────────────────────────────
+// ─── Shared Translation State ─────────────────────────────────────────────
 
 let currentLang = 'en';
-let currentTranslations: Record<string, string> = {};
-let loadingPromise: Promise<void> | null = null;
-// Version counter — increments when translations update
-let translationVersion = 0;
+// ALL translations merged into one map — shared by all components
+let allTranslations: Record<string, string> = {};
+let version = 0;
 
-/**
- * Get current translation version. Components use this to detect changes.
- */
+
 export function getTranslationVersion(): number {
-  return translationVersion;
-}
-
-// ─── Public API ───────────────────────────────────────────────────────────
-
-export function getCurrentTranslations(): Record<string, string> {
-  return currentTranslations;
+  return version;
 }
 
 export function getCurrentLanguage(): string {
@@ -115,72 +131,90 @@ export function getCurrentLanguage(): string {
 }
 
 /**
- * Synchronously load cached translations for a language.
- * Returns the cache immediately — no API call.
+ * Register strings from a component.
+ * Loads from cache immediately, then fetches missing from API.
+ * All results merge into the shared allTranslations map.
  */
-export function loadCachedTranslations(lang: string): Record<string, string> {
-  if (lang === 'en') return {};
-  const cache = loadCache(lang);
-  currentLang = lang;
-  currentTranslations = { ...cache };
-  return cache;
-}
-
-/**
- * Load translations. First loads from cache (sync), then fetches missing from API.
- */
-export async function loadTranslations(
+export async function registerStrings(
   lang: string,
   strings: string[]
 ): Promise<void> {
-  if (lang === 'en') {
-    if (currentLang !== 'en') {
-      currentLang = 'en';
-      currentTranslations = {};
-      translationVersion++;
-    }
-    return;
-  }
+  if (lang === 'en') return;
 
   currentLang = lang;
 
-  // Load from cache synchronously
+  // 1. Load from cache synchronously
   const cache = loadCache(lang);
-  currentTranslations = { ...cache };
-
-  // Find missing
-  const missing = strings.filter(s => !cache[s] && s.trim().length > 0);
-
-  if (missing.length === 0) {
-    translationVersion++;
-    return;
-  }
-
-  loadingPromise = (async () => {
-    try {
-      const translated = await translateStrings(missing, lang);
-      const updatedCache = { ...currentTranslations, ...translated };
-      currentTranslations = updatedCache;
-      saveCache(lang, updatedCache);
-      translationVersion++;
-    } catch (err) {
-      console.error('[UI Translation] Failed:', err);
-    } finally {
-      loadingPromise = null;
+  let changed = false;
+  for (const [key, val] of Object.entries(cache)) {
+    if (!allTranslations[key] || allTranslations[key] !== val) {
+      allTranslations[key] = val;
+      changed = true;
     }
-  })();
+  }
+  if (changed) version++;
 
-  return loadingPromise;
+  // 2. Find missing strings
+  const missing = strings.filter(s => !allTranslations[s] && s.trim().length > 0);
+  if (missing.length === 0) return;
+
+  // 3. Fetch from API
+  try {
+    const translated = await translateStrings(missing, lang);
+    let updated = false;
+    for (const [key, val] of Object.entries(translated)) {
+      if (allTranslations[key] !== val) {
+        allTranslations[key] = val;
+        updated = true;
+      }
+    }
+    if (updated) {
+      // Save merged cache
+      const mergedCache: Record<string, string> = {};
+      for (const [k, v] of Object.entries(allTranslations)) {
+        if (typeof v === 'string') mergedCache[k] = v;
+      }
+      saveCache(lang, mergedCache);
+      version++;
+    }
+  } catch (err) {
+    console.error('[Translation] API failed:', err);
+  }
 }
 
 /**
- * Get a translated string.
+ * Switch language — clears old translations and loads new ones.
+ */
+export async function switchLanguage(lang: string): Promise<void> {
+  if (lang === currentLang && Object.keys(allTranslations).length > 0) return;
+
+  currentLang = lang;
+  allTranslations = {};
+  version++;
+
+  if (lang === 'en') return;
+
+  // Load from cache
+  const cache = loadCache(lang);
+  allTranslations = { ...cache };
+  version++;
+}
+
+/**
+ * Get a translated string. Returns original if no translation.
  */
 export function t(key: string): string {
   if (currentLang === 'en') return key;
-  return currentTranslations[key] || key;
+  return allTranslations[key] || key;
+}
+
+/**
+ * Reset quota exhaustion flag (e.g. after user tops up credits).
+ */
+export function resetQuotaFlag(): void {
+  translationQuotaExhausted = false;
 }
 
 export function translationsReady(): boolean {
-  return currentLang === 'en' || Object.keys(currentTranslations).length > 0;
+  return currentLang === 'en' || Object.keys(allTranslations).length > 0;
 }

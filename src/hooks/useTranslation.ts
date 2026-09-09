@@ -1,57 +1,47 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '../store';
 import {
-  loadTranslations,
-  loadCachedTranslations,
+  registerStrings,
+  switchLanguage,
   getTranslationVersion,
   t,
 } from '../services/uiTranslation';
 
 /**
- * Translation hook — sync cache load + async API fetch.
+ * Translation hook — shared store, all components read from same source.
  *
- * Flow:
- * 1. On mount: synchronously load cached translations → UI shows correct language immediately
- * 2. Then: async fetch missing translations from API → update cache → bump version → re-render
+ * When language changes:
+ * 1. switchLanguage() clears old translations, loads new cache
+ * 2. registerStrings() fetches missing translations from API
+ * 3. All components see the same translations at the same time
  */
 export function useTranslation(strings: string[]) {
   const language = useAppStore(s => s.language);
-  const [version, setVersion] = useState(getTranslationVersion());
-  const mountedRef = useRef(true);
-  const prevLang = useRef(language);
+  const [ver, setVer] = useState(getTranslationVersion());
 
   const uniqueStrings = [...new Set(strings.filter(s => s.trim()))];
   const stringsKey = uniqueStrings.join('|||');
 
-  // 1. Synchronous cache load on mount or language change
   useEffect(() => {
-    mountedRef.current = true;
-
     if (language === 'en') {
-      loadCachedTranslations('en');
-      setVersion(v => v + 1);
-      prevLang.current = language;
+      switchLanguage('en').then(() => setVer(getTranslationVersion()));
       return;
     }
 
-    // Immediately load from cache — UI updates instantly
-    loadCachedTranslations(language);
-    setVersion(v => v + 1);
-    prevLang.current = language;
+    // Step 1: Switch language (clears old, loads cache)
+    switchLanguage(language).then(() => {
+      setVer(getTranslationVersion());
 
-    // 2. Async: fetch missing translations from API
-    loadTranslations(language, uniqueStrings).then(() => {
-      if (mountedRef.current) {
-        setVersion(getTranslationVersion());
-      }
+      // Step 2: Register this component's strings (fetches missing from API)
+      registerStrings(language, uniqueStrings).then(() => {
+        setVer(getTranslationVersion());
+      });
     });
-
-    return () => { mountedRef.current = false; };
   }, [language, stringsKey]);
 
   const translate = useCallback((key: string): string => {
     return t(key);
-  }, [version, language]);
+  }, [ver, language]);
 
   return { t: translate, language, ready: true };
 }

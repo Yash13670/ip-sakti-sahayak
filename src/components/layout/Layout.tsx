@@ -27,7 +27,7 @@ const LAYOUT_STRINGS = [
   'AI-Powered IP & TK Screening Assistant',
   'Language',
   'EN only',
-  'Sarvam AI not configured — English mode only',
+  'Bhashini not configured — English mode only',
   'Jurisdiction',
   'IP-SAKTI Sahayak provides preliminary screening only.',
   'Not legal advice.',
@@ -36,13 +36,15 @@ const LAYOUT_STRINGS = [
 export function Layout({ children }: { children: ReactNode }) {
   const { currentScreen, setCurrentScreen, jurisdiction, setJurisdiction, language, setLanguage } =
     useAppStore();
-  const [sarvamReady, setSarvamReady] = useState(false);
+  const [sarvamStatus, setSarvamStatus] = useState<{ configured: boolean; working?: boolean; error?: string }>({ configured: false });
   const { t } = useTranslation(LAYOUT_STRINGS);
 
-  // Check Sarvam status on mount
+  // Check Bhashini status on mount
   useEffect(() => {
-    checkSarvamStatus().then(s => setSarvamReady(s.configured));
+    checkSarvamStatus().then(s => setSarvamStatus(s));
   }, []);
+
+  const sarvamReady = sarvamStatus.configured && sarvamStatus.working !== false;
 
   return (
     <div className="flex h-screen bg-surface">
@@ -105,9 +107,9 @@ export function Layout({ children }: { children: ReactNode }) {
               </option>
             ))}
           </select>
-          {!sarvamReady && language !== 'en' && (
+          {!sarvamStatus.configured && language !== 'en' && (
             <p className="text-[9px] text-amber-400/70 mt-1">
-              {t('Sarvam AI not configured — English mode only')}
+              {t('Bhashini not configured — English mode only')}
             </p>
           )}
         </div>
