@@ -201,60 +201,280 @@ async function openrouterChat(prompt, systemInstruction, model) {
   return text;
 }
 
-// ─── Bhashini AI API Helpers ────────────────────────────────────────────
-// Bhashini: India's government-backed FREE translation/STT/TTS platform
-// API: https://bhashini.ai  |  Auth: X-API-KEY header
+// ─── BHASHINI / UDYAT API ────────────────────────────────────────────────
 
-const BHASHINI_BASE = 'https://bhashini.ai';
-const BHASHINI_VERSION = 'v2';
+// ─── Government BHASHINI / ULCA API Helpers ─────────────────────────────
 
-// Map simple language codes to Bhashini full language names
-const BHASHINI_LANG_MAP = {
-  en: 'English', hi: 'Hindi', bn: 'Bengali', ta: 'Tamil', te: 'Telugu',
-  mr: 'Marathi', gu: 'Gujarati', kn: 'Kannada', ml: 'Malayalam', pa: 'Punjabi',
-  or: 'Odia', as: 'Assamese', sa: 'Sanskrit', ur: 'Urdu', ne: 'Nepali',
+const BHASHINI_ULCA_API_KEY = process.env.BHASHINI_ULCA_API_KEY || '';
+const BHASHINI_INFERENCE_KEY = process.env.BHASHINI_INFERENCE_KEY || '';
+
+const BHASHINI_USER_ID =
+  process.env.BHASHINI_USER_ID || '80ff090d71814aca9d66699241ae11d4';
+
+const BHASHINI_PIPELINE_ID = '64392f96daac500b55c543cd';
+
+const BHASHINI_CONFIG_URL =
+  'https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline';
+
+const BHASHINI_LANG_CODES = {
+  en: 'en',
+  hi: 'hi',
+  bn: 'bn',
+  ta: 'ta',
+  te: 'te',
+  mr: 'mr',
+  gu: 'gu',
+  kn: 'kn',
+  ml: 'ml',
+  pa: 'pa',
+  or: 'or',
+  as: 'as',
+  sa: 'sa',
+  ur: 'ur',
+  ne: 'ne',
 };
 
-// Reverse map: Bhashini name → our code
-const BHASHINI_NAME_TO_CODE = {};
-for (const [code, name] of Object.entries(BHASHINI_LANG_MAP)) {
-  BHASHINI_NAME_TO_CODE[name] = code;
+function normalizeBhashiniLanguage(language) {
+  if (!language) return 'en';
+
+  const code = String(language).toLowerCase().trim();
+
+  return BHASHINI_LANG_CODES[code] || code;
 }
 
-function toBhashiniLang(code) {
-  if (!code) return 'English';
-  if (BHASHINI_LANG_MAP[code]) return BHASHINI_LANG_MAP[code];
-  // If it's already a full name, return as-is
-  if (BHASHINI_NAME_TO_CODE[code]) return code;
-  return 'English';
-}
 
-function fromBhashiniLang(name) {
-  if (!name) return 'en';
-  return BHASHINI_NAME_TO_CODE[name] || 'en';
-}
+// Get Pipeline Config
+async function getBhashiniPipelineConfig(tasks) {
+  if (!BHASHINI_USER_ID) {
+    throw new Error('BHASHINI_USER_ID is not configured');
+  }
 
-async function bhashiniTranslate(text, sourceLanguage, targetLanguage) {
-  const src = sourceLanguage === 'auto' || !sourceLanguage ? 'Auto' : toBhashiniLang(sourceLanguage);
-  const tgt = toBhashiniLang(targetLanguage);
+  if (!BHASHINI_ULCA_API_KEY) {
+    throw new Error('BHASHINI_ULCA_API_KEY is not configured');
+  }
 
-  const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/translate`, {
+  const response = await fetch(BHASHINI_CONFIG_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json',   'X-API-KEY': BHASHINI_API_KEY },
+    headers: {
+      'Content-Type': 'application/json',
+      userID: BHASHINI_USER_ID,
+      ulcaApiKey: BHASHINI_ULCA_API_KEY,
+    },
     body: JSON.stringify({
-      inputText: text,
-      inputLanguage: src,
-      outputLanguage: tgt,
+      pipelineTasks: tasks,
+      pipelineRequestConfig: {
+        pipelineId: BHASHINI_PIPELINE_ID,
+      },
     }),
   });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Bhashini translate error: ${res.status} ${err}`);
+  const raw = await response.text();
+
+  let data;
+
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(
+      `Bhashini Config returned non-JSON (${response.status}): ${raw.slice(0, 500)}`
+    );
   }
 
-const translatedText = await res.text();
-const translated = translatedText.trim() || text;
+  if (!response.ok) {
+    throw new Error(
+      `Bhashini Config error ${response.status}: ${JSON.stringify(data)}`
+    );
+  }
+
+  if (!data.pipelineInferenceAPIEndPoint) {
+    throw new Error(
+      `Bhashini Config response missing pipelineInferenceAPIEndPoint`
+    );
+  }
+
+  return data;
+}
+
+
+// Get serviceId for requested task
+function getBhashiniServiceId(configData, taskType, sourceLanguage, targetLanguage) {
+  const taskConfig = configData.pipelineResponseConfig?.find(
+    item => item.taskType === taskType
+  );
+
+  if (!taskConfig || !Array.isArray(taskConfig.config)) {
+    throw new Error(`No ${taskType} configuration returned by Bhashini`);
+  }
+
+  const normalizedSource = normalizeBhashiniLanguage(sourceLanguage);
+  const normalizedTarget = targetLanguage
+    ? normalizeBhashiniLanguage(targetLanguage)
+    : null;
+
+  // First try exact language match
+  let selected = taskConfig.config.find(item => {
+    const lang = item.language || {};
+
+    const sourceMatches =
+      !normalizedSource ||
+      !lang.sourceLanguage ||
+      lang.sourceLanguage === normalizedSource;
+
+    const targetMatches =
+      !normalizedTarget ||
+      !lang.targetLanguage ||
+      lang.targetLanguage === normalizedTarget;
+
+    return sourceMatches && targetMatches;
+  });
+
+  // Fallback to first available service
+  if (!selected) {
+    selected = taskConfig.config[0];
+  }
+
+  if (!selected?.serviceId) {
+    throw new Error(`No serviceId found for ${taskType}`);
+  }
+
+  return selected.serviceId;
+}
+
+
+// Get endpoint + authentication details from Config response
+function getBhashiniInferenceDetails(configData) {
+  const endpoint = configData.pipelineInferenceAPIEndPoint;
+
+  const callbackUrl = endpoint?.callbackUrl;
+
+  const inferenceApiKey = endpoint?.inferenceApiKey;
+
+  const authName =
+    inferenceApiKey?.name || 'Authorization';
+
+  const authValue =
+    inferenceApiKey?.value || BHASHINI_INFERENCE_KEY;
+
+  if (!callbackUrl) {
+    throw new Error('Bhashini Config did not return callbackUrl');
+  }
+
+  if (!authValue) {
+    throw new Error('Bhashini inference authentication value is missing');
+  }
+
+  return {
+    callbackUrl,
+    authName,
+    authValue,
+  };
+}
+
+
+// Common Pipeline Compute Call
+async function bhashiniCompute(configData, pipelineTasks, inputData) {
+  const {
+    callbackUrl,
+    authName,
+    authValue,
+  } = getBhashiniInferenceDetails(configData);
+
+  const response = await fetch(callbackUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      [authName]: authValue,
+    },
+    body: JSON.stringify({
+      pipelineTasks,
+      inputData,
+    }),
+  });
+
+  const raw = await response.text();
+
+  let data;
+
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(
+      `Bhashini Compute returned non-JSON (${response.status}): ${raw.slice(0, 500)}`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `Bhashini Compute error ${response.status}: ${JSON.stringify(data)}`
+    );
+  }
+
+  return data;
+}
+
+
+// ─── Translation ────────────────────────────────────────────────────────
+
+async function bhashiniTranslate(text, sourceLanguage, targetLanguage) {
+  const source = normalizeBhashiniLanguage(sourceLanguage);
+  const target = normalizeBhashiniLanguage(targetLanguage);
+
+  const configData = await getBhashiniPipelineConfig([
+    {
+      taskType: 'translation',
+      config: {
+        language: {
+          sourceLanguage: source,
+          targetLanguage: target,
+        },
+      },
+    },
+  ]);
+
+  const serviceId = getBhashiniServiceId(
+    configData,
+    'translation',
+    source,
+    target
+  );
+
+  const result = await bhashiniCompute(
+    configData,
+    [
+      {
+        taskType: 'translation',
+        config: {
+          language: {
+            sourceLanguage: source,
+            targetLanguage: target,
+          },
+          serviceId,
+        },
+      },
+    ],
+    {
+      input: [
+        {
+          source: text,
+        },
+      ],
+      audio: [
+        {
+          audioContent: null,
+        },
+      ],
+    }
+  );
+
+  const translated =
+    result.pipelineResponse?.[0]?.output?.[0]?.target;
+
+  if (!translated) {
+    throw new Error(
+      `Bhashini translation returned no target text: ${JSON.stringify(result)}`
+    );
+  }
+
   return {
     translatedText: translated,
     sourceLanguage,
@@ -262,102 +482,133 @@ const translated = translatedText.trim() || text;
   };
 }
 
+
+// ─── Speech To Text / ASR ───────────────────────────────────────────────
+
 async function bhashiniSTT(audioBase64, language, audioFormat) {
-  const langName = toBhashiniLang(language);
-  const audioBuffer = Buffer.from(audioBase64, 'base64');
-  console.log(`[Bhashini STT] Audio: ${audioBuffer.length} bytes, format: ${audioFormat || 'unknown'}, lang: ${langName}`);
+  const source = normalizeBhashiniLanguage(language);
 
-  const boundary = '----BhashiniBoundary' + Date.now();
-  const contentType = audioFormat === 'webm' ? 'audio/webm' : audioFormat === 'mp3' ? 'audio/mpeg' : 'audio/wav';
-  const ext = audioFormat === 'webm' ? 'webm' : audioFormat === 'mp3' ? 'mp3' : 'wav';
+  const configData = await getBhashiniPipelineConfig([
+    {
+      taskType: 'asr',
+      config: {
+        language: {
+          sourceLanguage: source,
+        },
+      },
+    },
+  ]);
 
-  // Build multipart body
-  const parts = [];
-  parts.push(Buffer.from(
-    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio.${ext}"\r\nContent-Type: ${contentType}\r\n\r\n`,
-    'utf-8'
-  ));
-  parts.push(audioBuffer);
-  parts.push(Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\n${langName}`, 'utf-8'));
-  parts.push(Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8'));
+  const serviceId = getBhashiniServiceId(
+    configData,
+    'asr',
+    source
+  );
 
-  const multipartBody = Buffer.concat(parts);
-  console.log(`[Bhashini STT] Sending ${multipartBody.length} bytes to Bhashini API`);
+  const audioContent = audioBase64;
 
-  const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/asr`, {
-    method: 'POST',
-    headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'X-API-KEY': BHASHINI_API_KEY },
-    body: multipartBody,
-  });
+  const result = await bhashiniCompute(
+    configData,
+    [
+      {
+        taskType: 'asr',
+        config: {
+          language: {
+            sourceLanguage: source,
+          },
+          serviceId,
+          audioFormat: audioFormat || 'webm',
+          samplingRate: 16000,
+        },
+      },
+    ],
+    {
+      audio: [
+        {
+          audioContent,
+        },
+      ],
+    }
+  );
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Bhashini STT error: ${res.status} ${err}`);
-  }
+  const transcript =
+    result.pipelineResponse?.[0]?.output?.[0]?.source ||
+    result.pipelineResponse?.[0]?.output?.[0]?.target ||
+    '';
 
-  const data = await res.json();
   return {
-    text: data?.output?.[0]?.source || data?.transcript || '',
+    text: transcript,
     language,
   };
 }
+
+
+// ─── Text To Speech / TTS ───────────────────────────────────────────────
 
 async function bhashiniTTS(text, language, gender) {
-  const langName = toBhashiniLang(language);
-  const voiceName = gender === 'male' ? 'Male1' : 'Female1';
+  const source = normalizeBhashiniLanguage(language);
 
-  const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/synthesize`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json',  'X-API-KEY': BHASHINI_API_KEY },
-    body: JSON.stringify({
-      text,
-      language: langName,
-      voiceName,
-      ttsModelType: 'TTS v3',
-    }),
-  });
+  const selectedGender =
+    gender === 'male' ? 'male' : 'female';
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Bhashini TTS error: ${res.status} ${err}`);
+  const configData = await getBhashiniPipelineConfig([
+    {
+      taskType: 'tts',
+      config: {
+        language: {
+          sourceLanguage: source,
+        },
+      },
+    },
+  ]);
+
+  const serviceId = getBhashiniServiceId(
+    configData,
+    'tts',
+    source
+  );
+
+  const result = await bhashiniCompute(
+    configData,
+    [
+      {
+        taskType: 'tts',
+        config: {
+          language: {
+            sourceLanguage: source,
+          },
+          serviceId,
+          gender: selectedGender,
+          samplingRate: 8000,
+        },
+      },
+    ],
+    {
+      input: [
+        {
+          source: text,
+        },
+      ],
+    }
+  );
+
+  const audioContent =
+    result.pipelineResponse?.[0]?.audio?.[0]?.audioContent ||
+    result.pipelineResponse?.[0]?.output?.[0]?.audioContent ||
+    '';
+
+  if (!audioContent) {
+    throw new Error(
+      `Bhashini TTS returned no audio: ${JSON.stringify(result)}`
+    );
   }
 
-  // Bhashini TTS returns audio/mpeg directly as binary
-  const audioBuffer = Buffer.from(await res.arrayBuffer());
-  const audioBase64 = audioBuffer.toString('base64');
   return {
-    audioContent: audioBase64,
+    audioContent,
     language,
-    gender: gender || 'female',
+    gender: selectedGender,
   };
 }
-
-async function bhashiniDetectLanguage(text) {
-  // Bhashini doesn't have a dedicated language detection endpoint.
-  // We use translation with 'Auto' source language — the response includes detectedInputLanguages.
-  const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/translate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      inputText: text.substring(0, 500),
-      inputLanguage: 'Auto',
-      outputLanguage: 'English',
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Bhashini detect language error: ${res.status} ${err}`);
-  }
-
-  const data = await res.json();
-  const detected = data.detectedInputLanguages?.[0] || 'English';
-  return {
-    language: fromBhashiniLang(detected),
-    confidence: 1.0,
-  };
-}
-
 // ─── Request Helpers ──────────────────────────────────────────────────────
 
 function readBody(req) {
@@ -539,34 +790,38 @@ const server = http.createServer(async (req, res) => {
 
   // ─── Bhashini AI Status ────────────────────────────────────────────
 
-  if (url === '/api/sarvam/status' && req.method === 'GET') {
-    // Bhashini.ai works without a key for basic usage.
-    // Test with a lightweight translation call.
-    try {
-      const testRes = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/translate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          inputText: 'Hello',
-          inputLanguage: 'English',
-          outputLanguage: 'Hindi',
-        }),
-      });
-      if (testRes.ok) {
-        return jsonResponse(res, 200, { configured: true, working: true });
-      }
-      console.log(`[Bhashini Status] Test failed: ${testRes.status}`);
-      return jsonResponse(res, 200, {
-        configured: true,
-        working: false,
-        error: 'api_error',
-      });
-    } catch (err) {
-      console.error('[Bhashini Status] Test failed:', err.message);
-      return jsonResponse(res, 200, { configured: true, working: false, error: 'network_error' });
-    }
-  }
+if (url === '/api/sarvam/status' && req.method === 'GET') {
+  try {
+    const configData = await getBhashiniPipelineConfig([
+      {
+        taskType: 'translation',
+        config: {
+          language: {
+            sourceLanguage: 'en',
+            targetLanguage: 'hi',
+          },
+        },
+      },
+    ]);
 
+    const endpoint = configData.pipelineInferenceAPIEndPoint;
+
+    return jsonResponse(res, 200, {
+      configured: true,
+      working: true,
+      pipelineId: BHASHINI_PIPELINE_ID,
+      callbackUrl: endpoint?.callbackUrl || null,
+    });
+  } catch (err) {
+    console.error('[Bhashini Status] Error:', err.message);
+
+    return jsonResponse(res, 200, {
+      configured: Boolean(BHASHINI_ULCA_API_KEY),
+      working: false,
+      error: err.message,
+    });
+  }
+}
   // Bhashini Translation (NMT)
   if (url === '/api/sarvam/translate' && req.method === 'POST') {
     try {
@@ -693,9 +948,9 @@ const HOST = '0.0.0.0';
 server.listen(PORT, HOST, () => {
   const geminiStatus = GEMINI_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
   const openrouterStatus = OPENROUTER_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
-  const bhashiniStatus = BHASHINI_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
+  const bhashiniStatus =  BHASHINI_ULCA_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
   console.log(`SERVER_READY on http://${HOST}:${PORT}`);
   console.log(`Gemini API: ${geminiStatus}`);
   console.log(`OpenRouter API: ${openrouterStatus}`);
-  console.log(`Bhashini AI: ${bhashiniStatus}`);
+  console.log(`Bhashini: ${bhashiniStatus}`);
 });
