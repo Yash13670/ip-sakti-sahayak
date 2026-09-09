@@ -37,9 +37,10 @@ const MIME = {
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEMINI_KEY || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
-const BHASHINI_API_KEY = process.env.BHASHINI_INFERENCE_KEY || process.env.SARVAM_API_KEY || '';
-// Bhashini.ai API works without a key for basic usage.
-// The X-API-KEY is optional — only needed for higher rate limits or premium voices.
+const BHASHINI_API_KEY = process.env.BHASHINI_INFERENCE_KEY || '';
+// NOTE: Bhashini.ai API works WITHOUT a key for basic usage.
+// The X-API-KEY is optional — only for higher rate limits or premium voices.
+// We do NOT send it by default to avoid 401 errors from invalid keys.
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const EMBEDDING_MODEL = 'gemini-embedding-2';
 const CHAT_MODEL = 'gemini-2.5-flash';
@@ -237,12 +238,9 @@ async function bhashiniTranslate(text, sourceLanguage, targetLanguage) {
   const src = sourceLanguage === 'auto' || !sourceLanguage ? 'Auto' : toBhashiniLang(sourceLanguage);
   const tgt = toBhashiniLang(targetLanguage);
 
-  const headers = { 'Content-Type': 'application/json' };
-  if (BHASHINI_API_KEY) headers['X-API-KEY'] = BHASHINI_API_KEY;
-
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/translate`, {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       inputText: text,
       inputLanguage: src,
@@ -287,12 +285,9 @@ async function bhashiniSTT(audioBase64, language, audioFormat) {
   const multipartBody = Buffer.concat(parts);
   console.log(`[Bhashini STT] Sending ${multipartBody.length} bytes to Bhashini API`);
 
-  const headers = { 'Content-Type': `multipart/form-data; boundary=${boundary}` };
-  if (BHASHINI_API_KEY) headers['X-API-KEY'] = BHASHINI_API_KEY;
-
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/asr`, {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
     body: multipartBody,
   });
 
@@ -312,12 +307,9 @@ async function bhashiniTTS(text, language, gender) {
   const langName = toBhashiniLang(language);
   const voiceName = gender === 'male' ? 'Male1' : 'Female1';
 
-  const headers = { 'Content-Type': 'application/json' };
-  if (BHASHINI_API_KEY) headers['X-API-KEY'] = BHASHINI_API_KEY;
-
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/synthesize`, {
-    method: 'POST',r
-    headers,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       text,
       language: langName,
@@ -344,12 +336,9 @@ async function bhashiniTTS(text, language, gender) {
 async function bhashiniDetectLanguage(text) {
   // Bhashini doesn't have a dedicated language detection endpoint.
   // We use translation with 'Auto' source language — the response includes detectedInputLanguages.
-  const headers = { 'Content-Type': 'application/json' };
-  if (BHASHINI_API_KEY) headers['X-API-KEY'] = BHASHINI_API_KEY;
-
   const res = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/translate`, {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       inputText: text.substring(0, 500),
       inputLanguage: 'Auto',
@@ -555,11 +544,9 @@ const server = http.createServer(async (req, res) => {
     // Bhashini.ai works without a key for basic usage.
     // Test with a lightweight translation call.
     try {
-      const headers = { 'Content-Type': 'application/json' };
-      if (BHASHINI_API_KEY) headers['X-API-KEY'] = BHASHINI_API_KEY;
       const testRes = await fetch(`${BHASHINI_BASE}/${BHASHINI_VERSION}/translate`, {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           inputText: 'Hello',
           inputLanguage: 'English',
