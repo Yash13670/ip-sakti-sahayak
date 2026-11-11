@@ -37,6 +37,7 @@ const MIME = {
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEMINI_KEY || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+const SARVAM_API_KEY = process.env.SARVAM_API_KEY || '';
 const BHASHINI_API_KEY = process.env.BHASHINI_INFERENCE_KEY || '';
 // NOTE: Bhashini.ai API works WITHOUT a key for basic usage.
 // The X-API-KEY is optional — only for higher rate limits or premium voices.
@@ -201,6 +202,139 @@ async function openrouterChat(prompt, systemInstruction, model) {
   const text = data.choices?.[0]?.message?.content;
   if (!text) throw new Error('Empty response from OpenRouter');
   return text;
+}
+
+// ─── SARVAM AI API ───────────────────────────────────────────────────────
+
+const SARVAM_LANG_MAP = {
+  en: 'en-IN',
+  hi: 'hi-IN',
+  bn: 'bn-IN',
+  ta: 'ta-IN',
+  te: 'te-IN',
+  mr: 'mr-IN',
+  gu: 'gu-IN',
+  kn: 'kn-IN',
+  ml: 'ml-IN',
+  pa: 'pa-IN',
+  or: 'od-IN',
+  as: 'as-IN',
+  sa: 'sa-IN',
+  ur: 'ur-IN',
+};
+
+function toSarvamLang(code) {
+  if (!code) return 'hi-IN';
+  const c = code.split('-')[0].toLowerCase().trim();
+  return SARVAM_LANG_MAP[c] || (c + '-IN');
+}
+
+async function sarvamTranslate(text, sourceLanguage, targetLanguage) {
+  const sourceCode = toSarvamLang(sourceLanguage);
+  const targetCode = toSarvamLang(targetLanguage);
+
+  if (SARVAM_API_KEY) {
+    try {
+      const res = await fetch('https://api.sarvam.ai/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-subscription-key': SARVAM_API_KEY,
+        },
+        body: JSON.stringify({
+          input: text,
+          source_language_code: sourceCode,
+          target_language_code: targetCode,
+          model: 'mayura:v1',
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.translated_text) {
+        return {
+          translatedText: data.translated_text,
+          sourceLanguage,
+          targetLanguage,
+        };
+      }
+      console.warn('[Sarvam Translate] API error, falling back to Gemini:', data?.error?.message || res.status);
+    } catch (e) {
+      console.warn('[Sarvam Translate] Request failed, falling back to Gemini:', e.message);
+    }
+  }
+
+  // Fallback to Gemini translation
+  if (GEMINI_API_KEY) {
+    const langNames = {
+      hi: 'Hindi', bn: 'Bengali', ta: 'Tamil', te: 'Telugu', mr: 'Marathi',
+      gu: 'Gujarati', kn: 'Kannada', ml: 'Malayalam', pa: 'Punjabi', or: 'Odia',
+      as: 'Assamese', sa: 'Sanskrit', ur: 'Urdu', en: 'English'
+    };
+    const targetLangName = langNames[targetLanguage] || targetLanguage;
+    const prompt = `Translate the following text to ${targetLangName}. Output ONLY the direct translated text, without any quotes, explanations, markdown, or commentary:\n\n${text}`;
+    const translatedText = await geminiChat(prompt);
+    return {
+      translatedText: translatedText.trim(),
+      sourceLanguage,
+      targetLanguage,
+    };
+  }
+
+  throw new Error('No translation service available');
+}
+
+async function sarvamTTS(text, language, gender) {
+  const targetCode = toSarvamLang(language);
+  if (SARVAM_API_KEY) {
+    try {
+      const res = await fetch('https://api.sarvam.ai/text-to-speech', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-subscription-key': SARVAM_API_KEY,
+        },
+        body: JSON.stringify({
+          inputs: [text],
+          target_language_code: targetCode,
+          speaker: gender === 'male' ? 'arvind' : 'meera',
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      const data = await res.json();
+      if (res.ok && data.audios && data.audios[0]) {
+        return {
+          audioContent: data.audios[0],
+          language,
+          gender: gender || 'female',
+        };
+      }
+      console.warn('[Sarvam TTS] API error:', data?.error?.message || res.status);
+    } catch (e) {
+      console.warn('[Sarvam TTS] Request failed:', e.message);
+    }
+  }
+
+  if (BHASHINI_ULCA_API_KEY) {
+    return await bhashiniTTS(text, language, gender);
+  }
+
+  throw new Error('TTS requires active Sarvam credits or Bhashini keys');
+}
+
+async function sarvamDetectLanguage(text) {
+  if (GEMINI_API_KEY) {
+    try {
+      const prompt = `Detect the language of this text. Return ONLY a JSON object with "language" (2-letter ISO 639-1 code like "en", "hi", "bn", "ta") and "confidence" (number 0-1). No markdown, no formatting:\n\n${text.substring(0, 500)}`;
+      const result = await geminiChat(prompt);
+      const cleaned = result.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      return { language: parsed.language || 'en', confidence: parsed.confidence || 0.9 };
+    } catch (e) {
+      console.warn('[Language Detect] Gemini fallback failed:', e.message);
+    }
+  }
+  return { language: 'en', confidence: 0.5 };
 }
 
 // ─── BHASHINI / UDYAT API ────────────────────────────────────────────────
@@ -790,41 +924,18 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // ─── Bhashini AI Status ────────────────────────────────────────────
+  // ─── Multilingual / Sarvam Status ────────────────────────────────────
 
-if (url === '/api/sarvam/status' && req.method === 'GET') {
-  try {
-    const configData = await getBhashiniPipelineConfig([
-      {
-        taskType: 'translation',
-        config: {
-          language: {
-            sourceLanguage: 'en',
-            targetLanguage: 'hi',
-          },
-        },
-      },
-    ]);
-
-    const endpoint = configData.pipelineInferenceAPIEndPoint;
-
+  if (url === '/api/sarvam/status' && req.method === 'GET') {
+    const isConfigured = Boolean(SARVAM_API_KEY || BHASHINI_ULCA_API_KEY || GEMINI_API_KEY);
     return jsonResponse(res, 200, {
-      configured: true,
+      configured: isConfigured,
       working: true,
-      pipelineId: BHASHINI_PIPELINE_ID,
-      callbackUrl: endpoint?.callbackUrl || null,
-    });
-  } catch (err) {
-    console.error('[Bhashini Status] Error:', err.message);
-
-    return jsonResponse(res, 200, {
-      configured: Boolean(BHASHINI_ULCA_API_KEY),
-      working: false,
-      error: err.message,
+      provider: SARVAM_API_KEY ? 'sarvam' : (BHASHINI_ULCA_API_KEY ? 'bhashini' : 'gemini'),
     });
   }
-}
-  // Bhashini Translation (NMT)
+
+  // Translation (Sarvam with Gemini fallback)
   if (url === '/api/sarvam/translate' && req.method === 'POST') {
     try {
       const body = await readBody(req);
@@ -832,15 +943,15 @@ if (url === '/api/sarvam/status' && req.method === 'GET') {
       if (!text || !sourceLanguage || !targetLanguage) {
         return jsonResponse(res, 400, { error: 'Missing required fields: text, sourceLanguage, targetLanguage' });
       }
-      const result = await bhashiniTranslate(text, sourceLanguage, targetLanguage);
+      const result = await sarvamTranslate(text, sourceLanguage, targetLanguage);
       return jsonResponse(res, 200, result);
     } catch (err) {
-      console.error('[Bhashini Translate] Error:', err.message);
+      console.error('[Translate] Error:', err.message);
       return jsonResponse(res, 500, { error: err.message });
     }
   }
 
-  // Bhashini Speech-to-Text (ASR)
+  // Speech-to-Text (ASR)
   if (url === '/api/sarvam/stt' && req.method === 'POST') {
     try {
       const body = await readBody(req);
@@ -851,12 +962,12 @@ if (url === '/api/sarvam/status' && req.method === 'GET') {
       const result = await bhashiniSTT(audioBase64, language, audioFormat);
       return jsonResponse(res, 200, result);
     } catch (err) {
-      console.error('[Bhashini STT] Error:', err.message);
+      console.error('[STT] Error:', err.message);
       return jsonResponse(res, 500, { error: err.message });
     }
   }
 
-  // Bhashini Text-to-Speech (TTS)
+  // Text-to-Speech (TTS)
   if (url === '/api/sarvam/tts' && req.method === 'POST') {
     try {
       const body = await readBody(req);
@@ -864,15 +975,15 @@ if (url === '/api/sarvam/status' && req.method === 'GET') {
       if (!text || !language) {
         return jsonResponse(res, 400, { error: 'Missing required fields: text, language' });
       }
-      const result = await bhashiniTTS(text, language, gender || 'female');
+      const result = await sarvamTTS(text, language, gender || 'female');
       return jsonResponse(res, 200, result);
     } catch (err) {
-      console.error('[Bhashini TTS] Error:', err.message);
+      console.error('[TTS] Error:', err.message);
       return jsonResponse(res, 500, { error: err.message });
     }
   }
 
-  // Bhashini Language Detection
+  // Language Detection
   if (url === '/api/sarvam/detect-language' && req.method === 'POST') {
     try {
       const body = await readBody(req);
@@ -880,10 +991,10 @@ if (url === '/api/sarvam/status' && req.method === 'GET') {
       if (!text) {
         return jsonResponse(res, 400, { error: 'Missing required field: text' });
       }
-      const result = await bhashiniDetectLanguage(text);
+      const result = await sarvamDetectLanguage(text);
       return jsonResponse(res, 200, result);
     } catch (err) {
-      console.error('[Bhashini Detect Language] Error:', err.message);
+      console.error('[Detect Language] Error:', err.message);
       return jsonResponse(res, 500, { error: err.message });
     }
   }
@@ -950,9 +1061,11 @@ const HOST = '0.0.0.0';
 server.listen(PORT, HOST, () => {
   const geminiStatus = GEMINI_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
   const openrouterStatus = OPENROUTER_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
-  const bhashiniStatus =  BHASHINI_ULCA_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
+  const sarvamStatus = SARVAM_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
+  const bhashiniStatus = BHASHINI_ULCA_API_KEY ? 'CONNECTED' : 'NOT CONFIGURED';
   console.log(`SERVER_READY on http://${HOST}:${PORT}`);
   console.log(`Gemini API: ${geminiStatus}`);
   console.log(`OpenRouter API: ${openrouterStatus}`);
+  console.log(`Sarvam AI: ${sarvamStatus}`);
   console.log(`Bhashini: ${bhashiniStatus}`);
 });
