@@ -43,7 +43,7 @@ const BHASHINI_API_KEY = process.env.BHASHINI_INFERENCE_KEY || '';
 // We do NOT send it by default to avoid 401 errors from invalid keys.
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const EMBEDDING_MODEL = 'gemini-embedding-2';
-const CHAT_MODEL = 'gemini-2.5-flash';
+const CHAT_MODEL = 'gemini-3.5-flash-lite';
 
 // ─── Embedding Cache ──────────────────────────────────────────────────────
 
@@ -86,6 +86,7 @@ async function geminiEmbed(text) {
       content: { parts: [{ text }] },
       taskType: 'RETRIEVAL_DOCUMENT',
     }),
+    signal: AbortSignal.timeout(30000),
   });
 
   if (!res.ok) {
@@ -117,6 +118,7 @@ async function geminiChat(prompt, systemInstruction) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
   });
 
   if (!res.ok) {
@@ -167,7 +169,7 @@ async function openrouterEmbed(text, model) {
 
 // OpenRouter chat completion
 async function openrouterChat(prompt, systemInstruction, model) {
-  const chatModel = model || 'google/gemini-2.5-flash';
+  const chatModel = model || 'google/gemini-3.5-flash-lite';
   const messages = [];
   if (systemInstruction) {
     messages.push({ role: 'system', content: systemInstruction });
